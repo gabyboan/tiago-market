@@ -4,7 +4,13 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: [".agents/**", ".codex/**", "dist/**", "node_modules/**"],
+    ignores: [
+      ".agents/**",
+      ".codex/**",
+      "apps/flutter_app/**",
+      "dist/**",
+      "node_modules/**",
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
