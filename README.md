@@ -1,7 +1,7 @@
 # Tiago Market Prototype
 
-Prueba técnica backend para validar un comparador de precios de supermercados
-mexicanos antes de construir una web o app móvil.
+Backend y fuente de datos para una futura aplicación Flutter de comparación de
+precios de supermercados mexicanos.
 
 ## Etapa 0.2
 
@@ -39,7 +39,7 @@ PROFECO_REQUEST_DELAY_MS=1000
 ```
 
 La `SUPABASE_SERVICE_ROLE_KEY` es exclusivamente para backend. Nunca debe
-exponerse en una app web o móvil.
+exponerse en la aplicación Flutter.
 
 ## Base de datos
 
@@ -120,6 +120,9 @@ curl "http://localhost:3000/compare?query=coca"
 - Los listados externos se identifican por URL y, si falta, por nombre externo.
 - Cada listado registra su fuente (`mock`, `profeco` o `direct`).
 - Las tiendas mock quedan deshabilitadas para no mezclarlas con precios reales.
+- Flutter será el único cliente de usuario y consumirá exclusivamente la API.
+- La aplicación Flutter no accederá directamente a Supabase ni ejecutará
+  scraping.
 
 ## Limitaciones
 
