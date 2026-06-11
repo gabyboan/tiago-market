@@ -13,7 +13,11 @@ export async function saveScrapedProduct(
   const { data: store, error: storeError } = await supabase
     .from("stores")
     .upsert(
-      { name: product.storeSlug, slug: product.storeSlug },
+      {
+        name: product.storeName ?? product.storeSlug,
+        slug: product.storeSlug,
+        enabled: product.storeEnabled ?? true,
+      },
       { onConflict: "slug" },
     )
     .select("id")
@@ -59,6 +63,7 @@ export async function saveScrapedProduct(
         external_name: product.externalName,
         image_url: product.imageUrl,
         presentation: product.presentation,
+        source: product.source,
         available: product.available,
         last_seen_at: product.scrapedAt,
       })
@@ -74,6 +79,7 @@ export async function saveScrapedProduct(
         external_url: product.externalUrl,
         image_url: product.imageUrl,
         presentation: product.presentation,
+        source: product.source,
         available: product.available,
         last_seen_at: product.scrapedAt,
       })

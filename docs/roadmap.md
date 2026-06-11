@@ -2,21 +2,24 @@
 
 ## 1. Validación de scraping con mock y un supermercado
 
-- Ejecutar el flujo completo con datos mock.
-- Elegir una fuente real y validar términos de uso.
-- Confirmar selectores, calidad de datos y frecuencia permitida.
+- [x] Ejecutar el flujo completo con datos mock.
+- [x] Integrar QQP PROFECO como primera fuente real.
+- [x] Validar calidad inicial, fechas y frecuencia conservadora.
+- [ ] Evaluar nuevas fuentes autorizadas o acuerdos de datos.
 
 ## 2. Guardado en Supabase
 
-- Aplicar migraciones en un entorno de desarrollo.
-- Medir duplicados, fallos y crecimiento del histórico.
-- Automatizar el job con frecuencia conservadora.
+- [x] Aplicar migraciones en un entorno de desarrollo.
+- [x] Guardar mock y una muestra de precios reales.
+- [ ] Medir duplicados, fallos y crecimiento del histórico.
+- [ ] Automatizar el job con frecuencia conservadora.
 
 ## 3. API de comparación
 
-- Validar búsquedas y equivalencias de productos.
-- Agregar paginación, autenticación y límites de uso.
-- Documentar el contrato de API.
+- [x] Exponer búsqueda y comparación inicial.
+- [ ] Validar búsquedas y equivalencias de productos.
+- [ ] Agregar paginación, autenticación y límites de uso.
+- [ ] Documentar el contrato de API.
 
 ## 4. Demo web
 
