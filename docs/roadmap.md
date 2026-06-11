@@ -1,5 +1,46 @@
 # Roadmap
 
+## Etapa 0.7: catálogo amplio y enlaces verificables
+
+- [x] Permitir listar precios sin búsqueda obligatoria.
+- [x] Crear importador masivo PROFECO con deduplicación.
+- [x] Crear productos desde nombres observados reales.
+- [x] Agregar paginación incremental en Flutter.
+- [x] Separar enlaces de observación y fichas oficiales de tienda.
+- [x] Mantener nulos los enlaces directos que no puedan verificarse.
+- [ ] Evaluar fuentes directas autorizadas para obtener fichas oficiales.
+
+## Etapa 0.6: geocodificación auditable
+
+- [x] Integrar Mapbox Geocoding v6 en modo permanente.
+- [x] Agregar job idempotente y modo `dry_run`.
+- [x] Conservar consulta, confianza, precisión, respuesta y errores.
+- [x] Separar resultados aceptados, ambiguos y fallidos.
+- [x] Excluir resultados ambiguos de `/nearby`.
+- [ ] Configurar cuenta/token Mapbox autorizado.
+- [ ] Ejecutar geocodificación real y revisar resultados ambiguos.
+
+## Etapa 0.5: sucursales y geolocalización
+
+- [x] Normalizar sucursales y domicilios PROFECO.
+- [x] Preparar coordenadas opcionales y estado de geocodificación.
+- [x] Exponer `/branches` y `/nearby`.
+- [x] Filtrar `/prices` y `/compare` por ubicación y radio.
+- [x] Mostrar distancia y controles de ubicación en Flutter.
+- [x] No persistir la ubicación precisa del usuario.
+- [ ] Elegir y validar proveedor autorizado de geocodificación.
+- [ ] Geocodificar las 32 sucursales pendientes y revisar precisión.
+
+## Etapa 0.4: calidad PROFECO y preparación Flutter
+
+- [x] Conservar snapshot auditable con fuente, captura y payload original.
+- [x] Exponer freshness y antigüedad en precios y comparación.
+- [x] Comparar por sucursal/listing sin perder contexto.
+- [x] Exponer cobertura real y estado de fuentes.
+- [x] Mostrar fuente, antigüedad y advertencia de precio antiguo en Flutter.
+- [x] Mantener Walmart y Soriana directos desactivados.
+- [ ] Aplicar la migración 005 en producción y desplegar la API 0.4.
+
 ## 1. Validación de scraping con mock y un supermercado
 
 - [x] Ejecutar el flujo completo con datos mock.
@@ -21,6 +62,7 @@
 - [x] Agregar paginación y límites de uso.
 - [x] Documentar el contrato de API.
 - [ ] Definir autenticación antes de publicar Flutter.
+- [x] Exponer fuente, sucursal, fecha, freshness y ranking.
 
 ## 4. API pública y automatización
 

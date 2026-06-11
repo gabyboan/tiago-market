@@ -5,6 +5,19 @@ export type ScrapedProduct = {
   storeName?: string;
   storeEnabled?: boolean;
   source: string;
+  sourceProductName: string;
+  sourceStoreName: string;
+  sourceBranchName: string | null;
+  sourceBranchKey: string | null;
+  sourceAddress: string | null;
+  sourceNeighborhood: string | null;
+  sourcePostalCode: string | null;
+  sourceMunicipality: string | null;
+  sourceState: string | null;
+  sourceCityCode: string | null;
+  sourceCityName: string | null;
+  externalReference: string | null;
+  rawPayload: Record<string, unknown>;
   searchTerm: string;
   internalProductName: string;
   normalizedName: string;
@@ -13,6 +26,7 @@ export type ScrapedProduct = {
   price: number | null;
   currency: "MXN";
   externalUrl: string | null;
+  storeProductUrl: string | null;
   imageUrl: string | null;
   presentation: string | null;
   available: boolean;

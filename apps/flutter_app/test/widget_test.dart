@@ -7,6 +7,7 @@ void main() {
 
     expect(find.text('Tiago Market'), findsOneWidget);
     expect(find.text('Mejores precios'), findsOneWidget);
+    expect(find.text('Usar mi ubicación'), findsOneWidget);
     expect(find.text('BODEGA AURRERA'), findsOneWidget);
     expect(find.text('\$15.00'), findsOneWidget);
   });
