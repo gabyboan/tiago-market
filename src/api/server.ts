@@ -63,6 +63,7 @@ export function createApi() {
     const { data, error } = await supabase
       .from("stores")
       .select("id,name,slug,country,enabled,created_at")
+      .eq("enabled", true)
       .order("name");
 
     if (error) {

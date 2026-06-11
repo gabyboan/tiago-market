@@ -28,6 +28,9 @@ export async function scrapeMock(
     products: [
       {
         storeSlug: "mock-market",
+        storeName: "Mock Market",
+        storeEnabled: false,
+        source: "mock",
         searchTerm,
         internalProductName: productMeta.internalName,
         normalizedName: productMeta.normalizedName,

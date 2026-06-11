@@ -2,6 +2,9 @@ import type { ProductMeta } from "../products/products-test.js";
 
 export type ScrapedProduct = {
   storeSlug: string;
+  storeName?: string;
+  storeEnabled?: boolean;
+  source: string;
   searchTerm: string;
   internalProductName: string;
   normalizedName: string;

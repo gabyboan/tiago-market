@@ -3,17 +3,25 @@ import { productsTest } from "../products/products-test.js";
 import { scrapeMock } from "../scrapers/mock.js";
 import type { StoreScraper } from "../scrapers/types.js";
 
-const activeScrapers: StoreScraper[] = [scrapeMock];
+type UpdatePricesOptions = {
+  products?: typeof productsTest;
+  scrapers?: StoreScraper[];
+};
 
-export async function updatePrices(): Promise<void> {
+const SAVE_CONCURRENCY = 5;
+
+export async function updatePrices({
+  products = productsTest,
+  scrapers = [scrapeMock],
+}: UpdatePricesOptions = {}): Promise<void> {
   const startedAt = Date.now();
   let processedProducts = 0;
   let savedPrices = 0;
   let errors = 0;
 
-  for (const productMeta of productsTest) {
+  for (const productMeta of products) {
     for (const searchTerm of productMeta.searchTerms) {
-      for (const scrape of activeScrapers) {
+      for (const scrape of scrapers) {
         processedProducts += 1;
 
         try {
@@ -27,17 +35,34 @@ export async function updatePrices(): Promise<void> {
             continue;
           }
 
-          for (const product of result.products) {
-            try {
-              await saveScrapedProduct(product);
-              if (product.price !== null) savedPrices += 1;
-            } catch (error) {
-              errors += 1;
-              console.error(
-                `[${result.storeSlug}] No se pudo guardar ${product.externalName}:`,
-                error,
-              );
-            }
+          if (result.products.length === 0) {
+            console.warn(`[${result.storeSlug}] Sin resultados: ${searchTerm}`);
+          }
+
+          for (
+            let index = 0;
+            index < result.products.length;
+            index += SAVE_CONCURRENCY
+          ) {
+            const batch = result.products.slice(
+              index,
+              index + SAVE_CONCURRENCY,
+            );
+
+            await Promise.all(
+              batch.map(async (product) => {
+                try {
+                  await saveScrapedProduct(product);
+                  if (product.price !== null) savedPrices += 1;
+                } catch (error) {
+                  errors += 1;
+                  console.error(
+                    `[${result.storeSlug}] No se pudo guardar ${product.externalName}:`,
+                    error,
+                  );
+                }
+              }),
+            );
           }
         } catch (error) {
           errors += 1;
@@ -55,7 +80,9 @@ export async function updatePrices(): Promise<void> {
   });
 }
 
-updatePrices().catch((error: unknown) => {
-  console.error("El job terminó inesperadamente:", error);
-  process.exitCode = 1;
-});
+if (process.argv[1]?.endsWith("update-prices.ts")) {
+  updatePrices().catch((error: unknown) => {
+    console.error("El job terminó inesperadamente:", error);
+    process.exitCode = 1;
+  });
+}
