@@ -38,15 +38,24 @@ exponerse en una app web o móvil.
 
 ## Base de datos
 
-Abrir el SQL Editor del proyecto Supabase, copiar el contenido de
-`supabase/migrations/001_init.sql` y ejecutarlo una vez.
+Vincular el proyecto y aplicar todas las migraciones:
+
+```bash
+supabase login
+supabase link --project-ref <project-ref>
+supabase db push
+```
+
+Como alternativa, las migraciones de `supabase/migrations/` se pueden ejecutar
+en orden desde el SQL Editor de Supabase.
 
 La migración crea tablas, índices, RLS y estas vistas:
 
 - `latest_prices`: último precio conocido por producto de tienda.
 - `compare_prices`: últimos precios disponibles, ordenables por `price_rank`.
 
-RLS queda habilitado sin políticas públicas. La API usa la service role desde el
+RLS queda habilitado sin políticas públicas. Los roles `anon` y `authenticated`
+no reciben acceso directo; la API usa `service_role` exclusivamente desde el
 backend.
 
 ## Uso
