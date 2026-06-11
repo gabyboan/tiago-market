@@ -1,0 +1,38 @@
+{
+  "name": "tiago-market-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prototipo backend para comparar precios de supermercados mexicanos.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "scrape:mock": "tsx src/jobs/update-prices.ts",
+    "api": "tsx src/api/server.ts",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "playwright": "^1.52.0",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.26.0",
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.15.3",
+    "eslint": "^9.26.0",
+    "globals": "^16.0.0",
+    "prettier": "^3.5.3",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

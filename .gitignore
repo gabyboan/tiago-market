@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.agents/
+.codex/
+skills-lock.json
+supabase/.temp/
+playwright-report/
+test-results/
+*.log
