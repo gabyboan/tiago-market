@@ -34,6 +34,12 @@ La integración:
 - usa la fecha de observación publicada por PROFECO;
 - no requiere credenciales privadas.
 
+El job `import:profeco-catalog` amplía la cobertura con búsquedas generales,
+deduplica observaciones y conserva el nombre real publicado. PROFECO no entrega
+URLs de fichas oficiales de las tiendas: solo se publica el enlace a la
+observación PROFECO. `store_product_url` permanece nulo hasta integrar una fuente
+directa autorizada que proporcione ese enlace.
+
 Walmart, Soriana, Chedraui y La Comer no se activaron como scrapers directos:
 durante la validación sus reglas públicas o respuestas bloquearon o restringieron
 la automatización. PROFECO permite obtener observaciones de varias de estas

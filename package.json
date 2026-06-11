@@ -1,6 +1,6 @@
 {
   "name": "tiago-market-prototype",
-  "version": "0.3.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Prototipo backend para comparar precios de supermercados mexicanos.",
   "type": "module",
@@ -10,10 +10,13 @@
     "start": "node dist/index.js",
     "scrape:mock": "tsx src/jobs/update-prices.ts",
     "scrape:profeco": "tsx src/jobs/update-profeco-prices.ts",
+    "import:profeco-catalog": "tsx src/jobs/import-profeco-catalog.ts",
+    "geocode:branches": "tsx src/jobs/geocode-branches.ts",
     "api": "tsx src/api/server.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test": "node --import tsx --test src/*.test.ts src/**/*.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",

@@ -1,0 +1,46 @@
+name: Geocode branches
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch_limit:
+        description: Maximum branches to process
+        required: true
+        default: "10"
+
+concurrency:
+  group: geocode-branches
+  cancel-in-progress: false
+
+jobs:
+  geocode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate project
+        run: npm run build
+
+      - name: Geocode pending branches
+        run: npm run geocode:branches
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MAPBOX_ACCESS_TOKEN: ${{ secrets.MAPBOX_ACCESS_TOKEN }}
+          NODE_ENV: production
+          GEOCODING_MODE: live
+          GEOCODING_BRANCH_LIMIT: ${{ inputs.branch_limit }}
+          GEOCODING_REQUEST_DELAY_MS: "1100"
+          GEOCODING_MIN_CONFIDENCE: "0.8"

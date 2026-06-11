@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { env } from "../config/env.js";
 import type { ProductMeta } from "../products/products-test.js";
@@ -28,7 +29,7 @@ const profecoResponseSchema = z.object({
   }),
 });
 
-type ProfecoPrice = z.infer<typeof profecoPriceSchema>;
+export type ProfecoPrice = z.infer<typeof profecoPriceSchema>;
 
 type ProfecoProductRule = {
   apiSearchTerm: string;
@@ -78,7 +79,7 @@ const productRules: Record<string, ProfecoProductRule> = {
   },
 };
 
-function normalize(value: string): string {
+export function normalizeProfecoProduct(value: string): string {
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -93,13 +94,26 @@ function normalize(value: string): string {
 }
 
 function slugify(value: string): string {
-  return normalize(value).replaceAll(" ", "-");
+  return normalizeProfecoProduct(value).replaceAll(" ", "-");
+}
+
+function branchKey(price: ProfecoPrice): string {
+  return createHash("md5")
+    .update(
+      [
+        "profeco",
+        env.PROFECO_CITY_CODE,
+        price.cadena_comercial.toLowerCase(),
+        price.establecimiento.toLowerCase(),
+      ].join("|"),
+    )
+    .digest("hex");
 }
 
 function matchesRule(price: ProfecoPrice, rule: ProfecoProductRule): boolean {
-  const normalizedProduct = normalize(price.producto);
+  const normalizedProduct = normalizeProfecoProduct(price.producto);
   return rule.requiredTerms.every((term) =>
-    normalizedProduct.includes(normalize(term)),
+    normalizedProduct.includes(normalizeProfecoProduct(term)),
   );
 }
 
@@ -122,17 +136,36 @@ function getPresentation(productName: string): string | null {
   return parts.length >= 3 ? parts.slice(2).join(", ") : null;
 }
 
-function toScrapedProduct(
+export function toProfecoScrapedProduct(
   price: ProfecoPrice,
   searchTerm: string,
   productMeta: ProductMeta,
   apiSearchTerm: string,
 ): ScrapedProduct {
+  const externalUrl = buildExternalUrl(
+    env.PROFECO_CITY_CODE,
+    apiSearchTerm,
+    price,
+  );
+
   return {
     storeSlug: slugify(price.cadena_comercial),
     storeName: price.cadena_comercial,
     storeEnabled: true,
     source: "profeco",
+    sourceProductName: price.producto,
+    sourceStoreName: price.cadena_comercial,
+    sourceBranchName: price.establecimiento,
+    sourceBranchKey: branchKey(price),
+    sourceAddress: price.direccion ?? null,
+    sourceNeighborhood: price.colonia ?? null,
+    sourcePostalCode: price.cp ?? null,
+    sourceMunicipality: price.municipio ?? null,
+    sourceState: price.entidad ?? null,
+    sourceCityCode: env.PROFECO_CITY_CODE,
+    sourceCityName: price.municipio ?? price.entidad ?? null,
+    externalReference: externalUrl,
+    rawPayload: price,
     searchTerm,
     internalProductName: productMeta.internalName,
     normalizedName: productMeta.normalizedName,
@@ -140,7 +173,8 @@ function toScrapedProduct(
     externalName: `${price.producto} · ${price.establecimiento}`,
     price: price.precio,
     currency: "MXN",
-    externalUrl: buildExternalUrl(env.PROFECO_CITY_CODE, apiSearchTerm, price),
+    externalUrl,
+    storeProductUrl: null,
     imageUrl: null,
     presentation: getPresentation(price.producto),
     available: true,
@@ -154,7 +188,7 @@ function selectLatestPrices(prices: ProfecoPrice[]): ProfecoPrice[] {
   const latestByListing = new Map<string, ProfecoPrice>();
 
   for (const price of prices) {
-    const key = normalize(
+    const key = normalizeProfecoProduct(
       `${price.cadena_comercial}|${price.establecimiento}|${price.producto}`,
     );
     const current = latestByListing.get(key);
@@ -218,7 +252,12 @@ export async function scrapeProfeco(
       storeSlug: "profeco",
       searchTerm,
       products: selectedPrices.map((price) =>
-        toScrapedProduct(price, searchTerm, productMeta, rule.apiSearchTerm),
+        toProfecoScrapedProduct(
+          price,
+          searchTerm,
+          productMeta,
+          rule.apiSearchTerm,
+        ),
       ),
     };
   } catch (error) {
