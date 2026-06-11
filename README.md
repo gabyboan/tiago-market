@@ -1,7 +1,7 @@
 # Tiago Market Prototype
 
 Backend y fuente de datos para una futura aplicación Flutter de comparación de
-precios de supermercados mexicanos.
+precios de tiendas en mexico
 
 ## Etapa 0.7
 
