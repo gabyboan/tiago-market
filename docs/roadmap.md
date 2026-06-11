@@ -12,20 +12,21 @@
 - [x] Aplicar migraciones en un entorno de desarrollo.
 - [x] Guardar mock y una muestra de precios reales.
 - [ ] Medir duplicados, fallos y crecimiento del histórico.
-- [ ] Automatizar el job con frecuencia conservadora.
+- [x] Automatizar el job con frecuencia conservadora.
 
 ## 3. API de comparación
 
 - [x] Exponer búsqueda y comparación inicial.
 - [ ] Validar búsquedas y equivalencias de productos.
-- [ ] Agregar paginación, autenticación y límites de uso.
-- [ ] Documentar el contrato de API.
+- [x] Agregar paginación y límites de uso.
+- [x] Documentar el contrato de API.
+- [ ] Definir autenticación antes de publicar Flutter.
 
 ## 4. API pública y automatización
 
-- Desplegar la API con una URL estable.
-- Automatizar la actualización periódica de precios.
-- Agregar monitoreo, límites de uso y alertas.
+- [ ] Desplegar la API con una URL estable.
+- [x] Automatizar la actualización periódica de precios.
+- [ ] Agregar monitoreo y alertas.
 
 ## 5. Prototipo Flutter
 

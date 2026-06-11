@@ -3,7 +3,7 @@
 Backend y fuente de datos para una futura aplicación Flutter de comparación de
 precios de supermercados mexicanos.
 
-## Etapa 0.2
+## Etapa 0.3
 
 El prototipo implementa el flujo:
 
@@ -36,6 +36,8 @@ PROFECO_CITY_CODE=0901
 PROFECO_PRODUCT_LIMIT=3
 PROFECO_MAX_RESULTS_PER_PRODUCT=10
 PROFECO_REQUEST_DELAY_MS=1000
+API_RATE_LIMIT_WINDOW_MS=60000
+API_RATE_LIMIT_MAX=120
 ```
 
 La `SUPABASE_SERVICE_ROLE_KEY` es exclusivamente para backend. Nunca debe
@@ -96,19 +98,31 @@ npm start
 
 ## Endpoints
 
-- `GET /health`
-- `GET /prices?query=coca`
-- `GET /compare?query=coca`
-- `GET /stores`
-- `GET /products`
+- `GET /api/v1/health`
+- `GET /api/v1/prices?query=coca&page=1&limit=20`
+- `GET /api/v1/compare?query=coca&store=wal-mart`
+- `GET /api/v1/stores`
+- `GET /api/v1/products`
+- `GET /api/v1/coverage`
 
 Ejemplos:
 
 ```bash
-curl http://localhost:3000/health
-curl "http://localhost:3000/prices?query=coca"
-curl "http://localhost:3000/compare?query=coca"
+curl http://localhost:3000/api/v1/health
+curl "http://localhost:3000/api/v1/prices?query=coca&limit=10"
+curl "http://localhost:3000/api/v1/compare?query=coca&store=wal-mart"
 ```
+
+Los endpoints anteriores sin `/api/v1` se mantienen temporalmente como alias.
+El contrato estable para Flutter está documentado en
+[`docs/api-v1.md`](docs/api-v1.md).
+
+## Automatización
+
+El workflow `.github/workflows/update-profeco-prices.yml` actualiza los precios
+de PROFECO de lunes a viernes y también puede ejecutarse manualmente desde
+GitHub Actions. Requiere los secretos `SUPABASE_URL` y
+`SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Decisiones técnicas
 
@@ -123,6 +137,7 @@ curl "http://localhost:3000/compare?query=coca"
 - Flutter será el único cliente de usuario y consumirá exclusivamente la API.
 - La aplicación Flutter no accederá directamente a Supabase ni ejecutará
   scraping.
+- La API pública usa contrato versionado, paginación y límites por IP.
 
 ## Limitaciones
 

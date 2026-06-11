@@ -1,0 +1,42 @@
+name: Update Profeco prices
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 15 * * 1-5"
+
+concurrency:
+  group: update-profeco-prices
+  cancel-in-progress: false
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate project
+        run: npm run build
+
+      - name: Update prices from QQP Profeco
+        run: npm run scrape:profeco
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NODE_ENV: production
+          PROFECO_CITY_CODE: "0901"
+          PROFECO_PRODUCT_LIMIT: "10"
+          PROFECO_MAX_RESULTS_PER_PRODUCT: "10"
+          PROFECO_REQUEST_DELAY_MS: "1000"
