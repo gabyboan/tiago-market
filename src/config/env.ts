@@ -25,6 +25,8 @@ const envSchema = z.object({
     .min(500)
     .max(10_000)
     .default(1000),
+  API_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).default(60_000),
+  API_RATE_LIMIT_MAX: z.coerce.number().int().min(10).default(120),
 });
 
 export const env = envSchema.parse(process.env);
