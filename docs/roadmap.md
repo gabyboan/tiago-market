@@ -30,11 +30,12 @@
 
 ## 5. Prototipo Flutter
 
-- Consumir exclusivamente la API propia.
-- Implementar búsqueda y comparación por tienda/sucursal.
-- Mostrar fuente y fecha de última actualización.
-- Diseñar favoritos, listas y alertas para fases posteriores.
-- No conectar Flutter directamente a Supabase.
+- [x] Crear demo mínima con búsqueda y comparación.
+- [x] Preparar consumo exclusivo de la API propia.
+- [x] Mostrar fuente y fecha de última actualización.
+- [ ] Conectar la demo a la URL pública de producción.
+- [ ] Diseñar favoritos, listas y alertas para fases posteriores.
+- [x] No conectar Flutter directamente a Supabase.
 
 ## 6. Publicación Play Store/App Store
 

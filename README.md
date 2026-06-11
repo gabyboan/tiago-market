@@ -124,6 +124,22 @@ de PROFECO de lunes a viernes y también puede ejecutarse manualmente desde
 GitHub Actions. Requiere los secretos `SUPABASE_URL` y
 `SUPABASE_SERVICE_ROLE_KEY`.
 
+## Demo Flutter
+
+La demo mínima está en `apps/flutter_app`. Muestra búsqueda y comparación por
+sucursal usando datos de ejemplo mientras la API no tenga una URL pública:
+
+```bash
+cd apps/flutter_app
+flutter run -d chrome
+```
+
+Para conectarla a la API desplegada:
+
+```bash
+flutter run --dart-define=API_BASE_URL=https://api.example.com
+```
+
 ## Decisiones técnicas
 
 - Cada supermercado implementa un scraper independiente con un contrato común.
