@@ -21,15 +21,19 @@
 - [ ] Agregar paginación, autenticación y límites de uso.
 - [ ] Documentar el contrato de API.
 
-## 4. Demo web
+## 4. API pública y automatización
 
-- Crear una interfaz simple de búsqueda y comparación.
-- Mostrar disponibilidad y fecha de última actualización.
+- Desplegar la API con una URL estable.
+- Automatizar la actualización periódica de precios.
+- Agregar monitoreo, límites de uso y alertas.
 
-## 5. App Flutter
+## 5. Prototipo Flutter
 
 - Consumir exclusivamente la API propia.
-- Diseñar favoritos, listas y alertas.
+- Implementar búsqueda y comparación por tienda/sucursal.
+- Mostrar fuente y fecha de última actualización.
+- Diseñar favoritos, listas y alertas para fases posteriores.
+- No conectar Flutter directamente a Supabase.
 
 ## 6. Publicación Play Store/App Store
 

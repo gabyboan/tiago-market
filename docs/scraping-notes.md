@@ -14,9 +14,10 @@
 Cada supermercado tiene un módulo independiente que devuelve `ScraperResult`.
 Un fallo se registra y no detiene los demás productos o fuentes.
 
-La app web o móvil no debe scrapear ni disparar scraping en tiempo real. Un job
-actualiza PostgreSQL/Supabase y la API consulta los precios guardados, incluyendo
-la fecha de última actualización.
+La aplicación Flutter no debe scrapear, disparar scraping en tiempo real ni
+acceder directamente a Supabase. Un job actualiza PostgreSQL/Supabase y la API
+propia consulta los precios guardados, incluyendo la fecha de última
+actualización.
 
 ## Primera fuente real: QQP PROFECO
 
