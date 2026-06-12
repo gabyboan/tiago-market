@@ -147,7 +147,10 @@ export async function saveScrapedProduct(
   if (product.price !== null) {
     const { error } = await supabase
       .from("price_snapshots")
-      .insert(snapshotRecord(product, storeProductId, branchId));
+      .upsert(snapshotRecord(product, storeProductId, branchId), {
+        onConflict: "store_product_id,captured_at",
+        ignoreDuplicates: true,
+      });
     assertNoError(error, "No se pudo guardar el precio");
   }
 }
