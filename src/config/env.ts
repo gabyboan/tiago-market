@@ -39,6 +39,7 @@ const envSchema = z.object({
     (value) => (value === "" ? undefined : value),
     z.string().min(1).optional(),
   ),
+  GOOGLE_CLIENT_ID: z.string().min(1),
   GEOCODING_BRANCH_LIMIT: z.coerce.number().int().min(1).max(100).default(10),
   GEOCODING_REQUEST_DELAY_MS: z.coerce
     .number()

@@ -2,10 +2,121 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 const apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+
+final googleSignIn = GoogleSignIn(scopes: <String>['email']);
+
+class UserSession {
+  UserSession({
+    required this.id,
+    required this.email,
+    required this.name,
+    required this.picture,
+    this.role,
+    this.isNewUser = false,
+  });
+
+  factory UserSession.fromJson(Map<String, dynamic> json) {
+    return UserSession(
+      id: json['id'] as String,
+      email: json['email'] as String,
+      name: json['name'] as String,
+      picture: json['picture'] as String? ?? '',
+      role: json['role'] as String?,
+      isNewUser: json['isNewUser'] as bool? ?? false,
+    );
+  }
+
+  UserSession copyWith({
+    String? role,
+    bool? isNewUser,
+  }) {
+    return UserSession(
+      id: id,
+      email: email,
+      name: name,
+      picture: picture,
+      role: role ?? this.role,
+      isNewUser: isNewUser ?? this.isNewUser,
+    );
+  }
+
+  final String id;
+  final String email;
+  final String name;
+  final String picture;
+  final String? role;
+  final bool isNewUser;
+}
+
+class AuthService {
+  static Future<UserSession> signInWithGoogle() async {
+    if (apiBaseUrl.isEmpty) {
+      throw Exception('Configura API_BASE_URL para usar autenticación.');
+    }
+
+    final googleUser = await googleSignIn.signIn();
+    if (googleUser == null) {
+      throw Exception('Inicio de sesión cancelado.');
+    }
+
+    final googleAuth = await googleUser.authentication;
+    final idToken = googleAuth.idToken;
+    if (idToken == null) {
+      throw Exception('No se obtuvo idToken de Google.');
+    }
+
+    final response = await http.post(
+      Uri.parse('$apiBaseUrl/api/v1/auth/login/google'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'idToken': idToken,
+        'email': googleUser.email,
+        'name': googleUser.displayName ?? googleUser.email,
+        'picture': googleUser.photoUrl,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      final errorBody = jsonDecode(response.body.toString()) as Map<String, dynamic>?;
+      final message = errorBody?['error']?['message'] as String?;
+      throw Exception(message ?? 'Servidor respondió ${response.statusCode}');
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final data = body['data'] as Map<String, dynamic>?;
+    if (data == null || data['user'] == null) {
+      throw Exception('Respuesta inválida del servidor.');
+    }
+
+    return UserSession.fromJson(data['user'] as Map<String, dynamic>);
+  }
+
+  static Future<void> setRole(String userId, String role) async {
+    if (apiBaseUrl.isEmpty) {
+      throw Exception('Configura API_BASE_URL para usar autenticación.');
+    }
+
+    final response = await http.post(
+      Uri.parse('$apiBaseUrl/api/v1/auth/role'),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': userId,
+      },
+      body: jsonEncode({'role': role}),
+    );
+
+    if (response.statusCode != 200) {
+      final errorBody = jsonDecode(response.body.toString()) as Map<String, dynamic>?;
+      final message = errorBody?['error']?['message'] as String?;
+      throw Exception(message ?? 'Servidor respondió ${response.statusCode}');
+    }
+  }
+}
 
 void main() => runApp(const TiagoMarketApp());
 
@@ -21,7 +132,7 @@ class TiagoMarketApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF006C51)),
         scaffoldBackgroundColor: const Color(0xFFF5F7F5),
         useMaterial3: true,
-        cardTheme: const CardThemeData(
+        cardTheme: const CardTheme(
           margin: EdgeInsets.zero,
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -30,13 +141,249 @@ class TiagoMarketApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const SearchPage(),
+      home: const AuthGate(),
+    );
+  }
+}
+
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  UserSession? _session;
+  bool _loading = false;
+  String? _error;
+
+  Future<void> _signIn() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final session = await AuthService.signInWithGoogle();
+      if (!mounted) return;
+      setState(() {
+        _session = session;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _applyRole(UserSession session) async {
+    if (!mounted) return;
+    setState(() {
+      _session = session;
+    });
+  }
+
+  Future<void> _signOut() async {
+    await googleSignIn.signOut();
+    if (!mounted) return;
+    setState(() {
+      _session = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_session != null) {
+      if (_session!.role == null || _session!.role!.isEmpty) {
+        return RoleSelectionPage(
+          session: _session!,
+          onRoleSelected: _applyRole,
+          onSignOut: _signOut,
+        );
+      }
+      return SearchPage(session: _session!, onSignOut: _signOut);
+    }
+
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Icon(
+                  Icons.shopping_basket_rounded,
+                  size: 84,
+                  color: Color(0xFF006C51),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Bienvenido a Tiago Market',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Compara precios y administra tu cuenta con Google Sign-In.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 32),
+                FilledButton.icon(
+                  onPressed: _loading ? null : _signIn,
+                  icon: const Icon(Icons.login_rounded),
+                  label: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    child: Text('Iniciar con Google'),
+                  ),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class RoleSelectionPage extends StatefulWidget {
+  const RoleSelectionPage({
+    super.key,
+    required this.session,
+    required this.onRoleSelected,
+    required this.onSignOut,
+  });
+
+  final UserSession session;
+  final ValueChanged<UserSession> onRoleSelected;
+  final VoidCallback onSignOut;
+
+  @override
+  State<RoleSelectionPage> createState() => _RoleSelectionPageState();
+}
+
+class _RoleSelectionPageState extends State<RoleSelectionPage> {
+  bool _loading = false;
+  String? _error;
+
+  Future<void> _submitRole(String role) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      await AuthService.setRole(widget.session.id, role);
+      if (!mounted) return;
+      widget.onRoleSelected(widget.session.copyWith(role: role, isNewUser: false));
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Selecciona tu rol'),
+        actions: [
+          IconButton(
+            onPressed: widget.onSignOut,
+            icon: const Icon(Icons.logout_rounded),
+            tooltip: 'Cerrar sesión',
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 20),
+              Text(
+                'Hola ${widget.session.name}, bienvenido a Tiago Market.',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Elige cómo deseas usar la app para personalizar tu experiencia.',
+                style: TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 32),
+              FilledButton(
+                onPressed: _loading ? null : () => _submitRole('seller'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Tengo negocio'),
+              ),
+              const SizedBox(height: 14),
+              OutlinedButton(
+                onPressed: _loading ? null : () => _submitRole('buyer'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Quiero comprar'),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 18),
+                Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.redAccent),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              if (_loading) ...[
+                const SizedBox(height: 18),
+                const Center(child: CircularProgressIndicator()),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({super.key});
+  const SearchPage({
+    super.key,
+    required this.session,
+    required this.onSignOut,
+  });
+
+  final UserSession session;
+  final VoidCallback onSignOut;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -160,17 +507,45 @@ class _SearchPageState extends State<SearchPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFFF5F7F5),
-        title: const Row(
+        title: Row(
           children: [
             CircleAvatar(
-              backgroundColor: Color(0xFF006C51),
+              backgroundColor: const Color(0xFF006C51),
               foregroundColor: Colors.white,
-              child: Icon(Icons.shopping_basket_rounded),
+              child: Text(
+                widget.session.name.isNotEmpty ? widget.session.name[0].toUpperCase() : 'T',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
-            SizedBox(width: 12),
-            Text('Tiago Market', style: TextStyle(fontWeight: FontWeight.w800)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Tiago Market',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    'Hola, ${widget.session.name}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
+        actions: [
+          IconButton(
+            onPressed: widget.onSignOut,
+            icon: const Icon(Icons.logout_rounded),
+            tooltip: 'Cerrar sesión',
+          ),
+        ],
       ),
       body: SafeArea(
         child: Center(
