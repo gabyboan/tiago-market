@@ -1,0 +1,292 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+const _googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
+
+final _googleSignIn = GoogleSignIn(
+  scopes: const <String>['email', 'profile'],
+  serverClientId: _googleWebClientId,
+);
+
+class GoogleAuthService {
+  static Future<void> signIn() async {
+    if (kIsWeb) {
+      final launched = await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+      );
+      if (!launched) {
+        throw AuthException(
+          'No se pudo abrir el flujo de inicio de sesión de Google.',
+        );
+      }
+      return;
+    }
+
+    if (_googleWebClientId.isEmpty) {
+      throw AuthException(
+        'Falta configurar GOOGLE_WEB_CLIENT_ID en la aplicación.',
+      );
+    }
+
+    final googleAccount = await _googleSignIn.signIn();
+    if (googleAccount == null) return;
+
+    final googleAuth = await googleAccount.authentication;
+    final idToken = googleAuth.idToken;
+    if (idToken == null) {
+      throw AuthException('Google no devolvió un ID token.');
+    }
+
+    await Supabase.instance.client.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+      accessToken: googleAuth.accessToken,
+    );
+  }
+
+  static Future<void> signOut() async {
+    await Supabase.instance.client.auth.signOut();
+    if (!kIsWeb) await _googleSignIn.signOut();
+  }
+
+  static Future<void> setRole(String role) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) throw AuthException('No hay una sesión activa.');
+    await Supabase.instance.client.auth.updateUser(
+      UserAttributes(data: {...?user.userMetadata, 'role': role}),
+    );
+  }
+}
+
+class GoogleSignInButton extends StatefulWidget {
+  const GoogleSignInButton({super.key, this.expanded = false});
+
+  final bool expanded;
+
+  @override
+  State<GoogleSignInButton> createState() => _GoogleSignInButtonState();
+}
+
+class _GoogleSignInButtonState extends State<GoogleSignInButton> {
+  bool _loading = false;
+
+  Future<void> _signIn() async {
+    setState(() => _loading = true);
+    try {
+      await GoogleAuthService.signIn();
+    } on AuthException catch (error) {
+      _showError(error.message);
+    } catch (error) {
+      _showError('No se pudo iniciar sesión con Google: $error');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = _loading
+        ? const SizedBox.square(
+            dimension: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : const Icon(Icons.login_rounded);
+    final button = FilledButton.icon(
+      onPressed: _loading ? null : _signIn,
+      icon: icon,
+      label: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 14),
+        child: Text('Continuar con Google'),
+      ),
+    );
+    return widget.expanded
+        ? SizedBox(width: double.infinity, child: button)
+        : button;
+  }
+}
+
+class AuthAccountButton extends StatefulWidget {
+  const AuthAccountButton({super.key, this.allowRoleChange = true});
+
+  final bool allowRoleChange;
+
+  @override
+  State<AuthAccountButton> createState() => _AuthAccountButtonState();
+}
+
+class _AuthAccountButtonState extends State<AuthAccountButton> {
+  late final StreamSubscription<AuthState> _authSubscription;
+  User? _user;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final auth = Supabase.instance.client.auth;
+    _user = auth.currentUser;
+    _authSubscription = auth.onAuthStateChange.listen((event) {
+      if (mounted) setState(() => _user = event.session?.user);
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
+  }
+
+  Future<void> _signIn() async {
+    setState(() => _loading = true);
+    try {
+      await GoogleAuthService.signIn();
+    } on AuthException catch (error) {
+      _showError(error.message);
+    } catch (error) {
+      _showError('No se pudo iniciar sesión con Google: $error');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _signOut() async {
+    setState(() => _loading = true);
+    try {
+      await GoogleAuthService.signOut();
+    } on AuthException catch (error) {
+      _showError(error.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _confirmRoleChange() async {
+    final currentRole = _user?.userMetadata?['role'] as String?;
+    final targetRole = currentRole == 'seller' ? 'buyer' : 'seller';
+    final targetLabel = targetRole == 'buyer' ? 'comprador' : 'negocio';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cambiar modo'),
+        content: Text(
+          'Vas a cambiar al modo $targetLabel. Podrás volver a cambiarlo desde tu cuenta.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Cambiar modo'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _loading = true);
+    try {
+      await GoogleAuthService.setRole(targetRole);
+    } on AuthException catch (error) {
+      _showError(error.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_user == null) {
+      final icon = _loading
+          ? const SizedBox.square(
+              dimension: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.login_rounded);
+
+      return Padding(
+        padding: const EdgeInsets.only(right: 12),
+        child: MediaQuery.sizeOf(context).width >= 600
+            ? TextButton.icon(
+                onPressed: _loading ? null : _signIn,
+                icon: icon,
+                label: const Text('Ingresar con Google'),
+              )
+            : IconButton(
+                onPressed: _loading ? null : _signIn,
+                icon: icon,
+                tooltip: 'Ingresar con Google',
+              ),
+      );
+    }
+
+    final metadata = _user!.userMetadata ?? const <String, dynamic>{};
+    final name = metadata['full_name'] as String? ??
+        metadata['name'] as String? ??
+        _user!.email ??
+        'Mi cuenta';
+    final avatarUrl = metadata['avatar_url'] as String?;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: PopupMenuButton<String>(
+        enabled: !_loading,
+        tooltip: 'Cuenta de $name',
+        onSelected: (value) {
+          if (value == 'sign-out') _signOut();
+          if (value == 'change-role') _confirmRoleChange();
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem<String>(
+            enabled: false,
+            child: Text(
+              name,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          if (widget.allowRoleChange)
+            const PopupMenuItem<String>(
+              value: 'change-role',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.swap_horiz_rounded),
+                title: Text('Cambiar modo'),
+              ),
+            ),
+          const PopupMenuItem<String>(
+            value: 'sign-out',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.logout_rounded),
+              title: Text('Cerrar sesión'),
+            ),
+          ),
+        ],
+        child: CircleAvatar(
+          foregroundImage: avatarUrl == null ? null : NetworkImage(avatarUrl),
+          child: avatarUrl == null
+              ? Text(name.characters.first.toUpperCase())
+              : null,
+        ),
+      ),
+    );
+  }
+}

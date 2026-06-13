@@ -36,7 +36,7 @@ MAPBOX_ACCESS_TOKEN=<token>
 ```
 
 ```bash
-npm run geocode:branches
+pnpm geocode:branches
 ```
 
 También existe el workflow manual `Geocode branches`. Requiere los secretos

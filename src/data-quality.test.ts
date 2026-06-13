@@ -17,7 +17,7 @@ test("marca un precio de más de 21 días como old", () => {
 test("el snapshot conserva raw_payload y captured_at nunca es null", () => {
   const product: ScrapedProduct = {
     storeSlug: "tienda",
-    source: "profeco",
+    source: "arteli-direct",
     sourceProductName: "Producto fuente",
     sourceStoreName: "Tienda",
     sourceBranchName: "Sucursal Centro",

@@ -14,12 +14,21 @@ import { registerAuthRoutes } from "./auth.js";
 const API_VERSION = "v1";
 const MAX_PAGE_SIZE = 50;
 const PRICE_COLUMNS =
-  "product_name,normalized_name,source_product_name,store_name,branch_id,branch_name,branch_address,branch_municipality,latitude,longitude,price,currency,source,captured_at,freshness,days_old,observation_url,store_product_url";
+  "product_name,normalized_name,source_product_name,store_name,branch_id,branch_name,branch_address,branch_municipality,latitude,longitude,image_url,presentation,price,currency,source,captured_at,freshness,days_old,store_product_url";
 const COMPARE_COLUMNS = `${PRICE_COLUMNS},best_price,price_rank`;
 
 export const SOURCE_CATALOG = [
-  { source: "mock", enabled: true, mode: "mock" },
-  { source: "profeco", enabled: true, mode: "live" },
+  { source: "arteli-direct", enabled: true, mode: "live" },
+  { source: "smart-final-direct", enabled: true, mode: "live" },
+  { source: "calimax-direct", enabled: true, mode: "live" },
+  { source: "chedraui-direct", enabled: true, mode: "live" },
+  { source: "heb-direct", enabled: true, mode: "live" },
+  {
+    source: "alsuper",
+    enabled: false,
+    mode: "experimental",
+    reason: "Catálogo público pendiente de una integración estable.",
+  },
   {
     source: "walmart",
     enabled: false,
@@ -33,12 +42,6 @@ export const SOURCE_CATALOG = [
     mode: "disabled",
     reason:
       "Automatización directa desactivada hasta validar una fuente estable.",
-  },
-  {
-    source: "chedraui",
-    enabled: false,
-    mode: "experimental",
-    reason: "Fuente pendiente de validación legal y técnica.",
   },
   {
     source: "bodega_aurrera",
@@ -476,7 +479,6 @@ function registerApiRoutes(app: express.Express, database: Database) {
     sendSuccess(response, {
       ...coverageResult.data,
       ...branchCoverageResult.data,
-      city_code: env.PROFECO_CITY_CODE,
       source_health: Object.fromEntries(
         sources.map((source) => [
           source.source,
@@ -497,6 +499,20 @@ function registerApiRoutes(app: express.Express, database: Database) {
     }
 
     sendSuccess(response, mergeSources(data ?? []));
+  });
+
+  app.get(["/api/v1/quality", "/quality"], async (_request, response) => {
+    const { data, error } = await database
+      .from("direct_quality_summary")
+      .select("*")
+      .single();
+
+    if (error) {
+      sendError(response, 500, "DATABASE_ERROR", error.message);
+      return;
+    }
+
+    sendSuccess(response, data ?? {});
   });
 }
 

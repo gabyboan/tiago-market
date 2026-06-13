@@ -8,6 +8,7 @@
 - [x] Agregar paginación incremental en Flutter.
 - [x] Separar enlaces de observación y fichas oficiales de tienda.
 - [x] Mantener nulos los enlaces directos que no puedan verificarse.
+- [x] Auditar repositorios externos propuestos como referencias.
 - [ ] Evaluar fuentes directas autorizadas para obtener fichas oficiales.
 
 ## Etapa 0.6: geocodificación auditable
@@ -77,7 +78,10 @@
 - [x] Mostrar fuente y fecha de última actualización.
 - [ ] Conectar la demo a la URL pública de producción.
 - [ ] Diseñar favoritos, listas y alertas para fases posteriores.
-- [x] No conectar Flutter directamente a Supabase.
+- [x] No conectar Flutter directamente a las tablas de negocio de Supabase.
+- [ ] Validar Google OAuth de extremo a extremo con credenciales reales.
+- [x] Crear proyecto Google Cloud dedicado y documentar Google Auth Platform.
+- [ ] Configurar App Links/Universal Links antes de publicar las apps móviles.
 
 ## 6. Publicación Play Store/App Store
 

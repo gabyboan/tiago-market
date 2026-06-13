@@ -7,23 +7,25 @@ precios de tiendas en mexico
 
 El prototipo implementa el flujo:
 
-`fuente -> snapshots auditables -> sucursales -> API geográfica -> Flutter`
+`tienda directa -> snapshots auditables -> API -> Flutter`
 
-La primera fuente real es la herramienta pública Quién es Quién en los Precios
-(QQP) de PROFECO. Sus precios son observaciones con fecha, fuente y sucursal;
-pueden variar y no representan precios consultados en tiempo real. Los scrapers
-directos de Walmart y Soriana permanecen desactivados hasta validar una fuente
-legal y técnicamente estable.
+Las fuentes activas son Arteli, Smart & Final México y Calimax. Cada resultado
+conserva precio, imagen y un enlace oficial verificable. Las fuentes históricas,
+demo o indirectas no se publican.
 
 ## Requisitos
 
-- Node.js 20 o superior
+- Node.js 22.13 o superior
+- pnpm mediante Corepack
 - Un proyecto de Supabase
+
+La versión local verificada está fijada en [`.node-version`](.node-version).
 
 ## Instalación
 
 ```bash
-npm install
+corepack enable
+pnpm install
 cp .env.example .env
 ```
 
@@ -35,12 +37,6 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 PORT=3000
 NODE_ENV=development
-PROFECO_CITY_CODE=0901
-PROFECO_PRODUCT_LIMIT=3
-PROFECO_MAX_RESULTS_PER_PRODUCT=10
-PROFECO_REQUEST_DELAY_MS=1000
-PROFECO_BULK_TERM_LIMIT=50
-PROFECO_BULK_MAX_LISTINGS=5000
 API_RATE_LIMIT_WINDOW_MS=60000
 API_RATE_LIMIT_MAX=120
 GEOCODING_MODE=dry_run
@@ -51,6 +47,7 @@ GEOCODING_MIN_CONFIDENCE=0.8
 ```
 
 ### Configuración de Google Sign In y Supabase
+
 1. En Google Cloud Console, abre el proyecto correcto.
 2. Ve a `APIs y servicios` → `Biblioteca` y habilita `Google Identity Services`.
 3. Ve a `APIs y servicios` → `Credenciales` → `Crear credenciales` → `ID de cliente de OAuth`.
@@ -88,10 +85,8 @@ La migración crea tablas, índices, RLS y estas vistas:
 Cada snapshot conserva `captured_at`, nombres originales de producto, tienda y
 sucursal, ciudad, referencia externa y `raw_payload` para auditoría.
 
-Las sucursales se normalizan en `branches` con domicilio estructurado y
-coordenadas opcionales. PROFECO QQP no entrega latitud/longitud: deben
-completarse mediante geocodificación autorizada o carga manual antes de aparecer
-en búsquedas por radio.
+Las sucursales opcionales se normalizan en `branches` con domicilio estructurado
+y coordenadas cuando una fuente directa las proporciona.
 
 La integración usa Mapbox Geocoding v6 en modo permanente y queda apagada por
 defecto. Los resultados de alta confianza se aceptan; los ambiguos quedan en
@@ -103,52 +98,35 @@ backend.
 
 ## Uso
 
-Cargar precios falsos realistas:
+Cargar precios directos verificables:
 
 ```bash
-npm run scrape:mock
+pnpm scrape:arteli
+pnpm scrape:smart-final
+pnpm scrape:calimax
+pnpm import:direct-catalog
 ```
-
-Cargar una muestra conservadora de precios reales desde QQP PROFECO:
-
-```bash
-npm run scrape:profeco
-```
-
-Importar un catálogo amplio de observaciones PROFECO:
-
-```bash
-npm run import:profeco-catalog
-```
-
-Este job consulta términos amplios, deduplica por producto y sucursal, y crea
-productos usando el nombre observado real. Sus límites se controlan con
-`PROFECO_BULK_TERM_LIMIT` y `PROFECO_BULK_MAX_LISTINGS`.
 
 Revisar consultas de geocodificación sin llamar al proveedor:
 
 ```bash
-npm run geocode:branches
+pnpm geocode:branches
 ```
 
 Las llamadas reales requieren un token Mapbox autorizado y
 `GEOCODING_MODE=live`.
 
-Por defecto consulta los primeros tres productos en Ciudad de México, guarda
-como máximo diez resultados por producto y espera un segundo entre consultas.
-Los códigos de ciudad se obtienen de `https://qqp.profeco.gob.mx/api/ciudades`.
-
 Iniciar la API:
 
 ```bash
-npm run api
+pnpm api
 ```
 
 También se puede compilar e iniciar:
 
 ```bash
-npm run build
-npm start
+pnpm build
+pnpm start
 ```
 
 ## Endpoints
@@ -160,6 +138,7 @@ npm start
 - `GET /api/v1/products`
 - `GET /api/v1/coverage`
 - `GET /api/v1/sources`
+- `GET /api/v1/quality`
 - `GET /api/v1/branches`
 - `GET /api/v1/nearby?query=coca&lat=19.43&lng=-99.13&radius_km=10`
 
@@ -182,7 +161,7 @@ El contrato estable para Flutter está documentado en
 
 ## Geocodificación
 
-El job `npm run geocode:branches` funciona en `dry_run` por defecto. Las
+El job `pnpm geocode:branches` funciona en `dry_run` por defecto. Las
 ejecuciones reales se activan explícitamente con `GEOCODING_MODE=live` y un
 token Mapbox autorizado para almacenamiento permanente. Existe además un
 workflow manual `Geocode branches`; no se agenda automáticamente para evitar
@@ -190,15 +169,16 @@ costos o llamadas accidentales.
 
 ## Automatización
 
-El workflow `.github/workflows/update-profeco-prices.yml` actualiza los precios
-de PROFECO de lunes a viernes y también puede ejecutarse manualmente desde
-GitHub Actions. Requiere los secretos `SUPABASE_URL` y
+El workflow `.github/workflows/update-direct-prices.yml` actualiza las tres
+fuentes y amplía gradualmente el catálogo de lunes a viernes. También puede
+ejecutarse manualmente desde GitHub Actions. Requiere los secretos `SUPABASE_URL` y
 `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Demo Flutter
 
 La demo mínima está en `apps/flutter_app`. Consume exclusivamente la API y
-muestra precio, supermercado, sucursal, fuente, fecha relativa y freshness.
+muestra productos agrupados, precios ordenados, supermercado, imagen, enlace
+oficial, fuente y freshness.
 Usa datos de ejemplo mientras la API no tenga una URL pública:
 
 ```bash
@@ -212,6 +192,10 @@ Para conectarla a la API desplegada:
 flutter run --dart-define=API_BASE_URL=https://api.example.com
 ```
 
+La demo también admite login opcional con Google mediante Supabase Auth. La
+configuración y los comandos están documentados en
+[`apps/flutter_app/README.md`](apps/flutter_app/README.md#login-con-google).
+
 ## Decisiones técnicas
 
 - Cada supermercado implementa un scraper independiente con un contrato común.
@@ -223,16 +207,15 @@ flutter run --dart-define=API_BASE_URL=https://api.example.com
 - La ubicación del usuario se usa solo para la consulta y no se persiste.
 - Las búsquedas geográficas excluyen sucursales todavía no geocodificadas.
 - Las búsquedas geográficas excluyen coordenadas pendientes de revisión.
-- `observation_url` enlaza a la consulta pública PROFECO.
-- `store_product_url` solo se devuelve cuando una fuente directa proporciona una
-  ficha oficial verificable. PROFECO no entrega esos enlaces de tienda.
+- `store_product_url` enlaza a la ficha oficial verificable.
+- `image_url` conserva la imagen publicada por la tienda.
 - Los productos internos se relacionan por `normalized_name`.
 - Los listados externos se identifican por URL y, si falta, por nombre externo.
-- Cada listado registra su fuente (`mock`, `profeco` o `direct`).
-- Las tiendas mock quedan deshabilitadas para no mezclarlas con precios reales.
-- Flutter será el único cliente de usuario y consumirá exclusivamente la API.
-- La aplicación Flutter no accederá directamente a Supabase ni ejecutará
-  scraping.
+- Cada listado registra su fuente directa.
+- Flutter será el único cliente de usuario y consumirá la API propia para datos
+  de precios.
+- Flutter puede usar Supabase Auth con una clave pública `publishable`, pero no
+  consulta directamente las tablas de negocio ni ejecuta scraping.
 - La API pública usa contrato versionado, paginación y límites por IP.
 
 ## Limitaciones
@@ -242,9 +225,9 @@ validación y mantenimiento periódico. Antes de activar cada fuente hay que
 revisar sus términos de uso y restricciones. Este proyecto no implementa bypass
 de CAPTCHA, login privado ni otras protecciones anti-bot.
 
-Los precios QQP son referencias observadas por PROFECO y pueden variar después
-de la fecha informada. La comparación conserva cada sucursal/listing y no
-presenta los datos como precios en tiempo real.
+Los precios pueden variar después de la fecha informada. La comparación muestra
+la última captura directa disponible y permite verificarla en la tienda.
 
 Ver [notas de scraping](docs/scraping-notes.md) y
+[auditoría de referencias externas](docs/scraper-reference-audit.md),
 [geolocalización](docs/geolocation.md), además del [roadmap](docs/roadmap.md).

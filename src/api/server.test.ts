@@ -74,7 +74,9 @@ const priceRows = [
     branch_name: "Sucursal Norte",
     price: 20,
     currency: "MXN",
-    source: "profeco",
+    source: "arteli-direct",
+    image_url: "https://example.com/coca.jpg",
+    store_product_url: "https://www.arteli.com.mx/coca/p",
     captured_at: "2026-06-10T12:00:00.000Z",
     freshness: "fresh",
     days_old: 1,
@@ -90,7 +92,9 @@ const priceRows = [
     branch_name: "Sucursal Centro",
     price: 18,
     currency: "MXN",
-    source: "profeco",
+    source: "smart-final-direct",
+    image_url: "https://example.com/coca-2.jpg",
+    store_product_url: "https://www.smartnfinal.com.mx/tienda/coca/",
     captured_at: "2026-06-09T12:00:00.000Z",
     freshness: "fresh",
     days_old: 2,
@@ -111,9 +115,9 @@ const tables: Record<string, Row[]> = {
       total_price_snapshots: 30,
       latest_snapshot_at: "2026-06-10T12:00:00.000Z",
       oldest_snapshot_at: "2026-05-01T12:00:00.000Z",
-      snapshots_by_source: { profeco: 30 },
-      products_by_source: { profeco: 10 },
-      stores_by_source: { profeco: 4 },
+      snapshots_by_source: { "arteli-direct": 30 },
+      products_by_source: { "arteli-direct": 10 },
+      stores_by_source: { "arteli-direct": 4 },
     },
   ],
   branch_coverage_summary: [
@@ -126,9 +130,22 @@ const tables: Record<string, Row[]> = {
   ],
   source_stats: [
     {
-      source: "profeco",
+      source: "arteli-direct",
       latest_snapshot_at: "2026-06-10T12:00:00.000Z",
       total_snapshots: 30,
+    },
+  ],
+  direct_quality_summary: [
+    {
+      total_latest_prices: 31,
+      with_image: 31,
+      with_official_link: 31,
+      fresh_prices: 31,
+      stale_prices: 0,
+      old_prices: 0,
+      implausible_prices: 0,
+      direct_sources: 3,
+      covered_products: 10,
     },
   ],
   branches: [
@@ -149,7 +166,7 @@ async function withApi(run: (baseUrl: string) => Promise<void>) {
     rpc: (name: string) =>
       new FakeQuery(name === "nearby_prices" ? priceRows : []),
   } as unknown as Parameters<typeof createApi>[0];
-  const server = createApi(database).listen(0);
+  const server = createApi(database).listen(0, "127.0.0.1");
   await new Promise<void>((resolve) => server.once("listening", resolve));
   const port = (server.address() as AddressInfo).port;
 
@@ -198,8 +215,7 @@ test("/api/v1/coverage devuelve métricas reales", async () => {
     const body = (await response.json()) as { data: Row };
     assert.equal(body.data.total_price_snapshots, 30);
     assert.equal(body.data.total_geocoded_branches, 3);
-    assert.deepEqual(body.data.snapshots_by_source, { profeco: 30 });
-    assert.equal(body.data.city_code, "0901");
+    assert.deepEqual(body.data.snapshots_by_source, { "arteli-direct": 30 });
   });
 });
 
@@ -207,14 +223,26 @@ test("/api/v1/sources lista fuentes habilitadas y deshabilitadas", async () => {
   await withApi(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/v1/sources`);
     const body = (await response.json()) as { data: Row[] };
-    assert.equal(body.data.length, 6);
+    assert.equal(body.data.length, 9);
     assert.equal(
-      body.data.find((row) => row.source === "profeco")?.enabled,
+      body.data.find((row) => row.source === "arteli-direct")?.enabled,
       true,
     );
     assert.equal(
       body.data.find((row) => row.source === "walmart")?.enabled,
       false,
+    );
+  });
+});
+
+test("/api/v1/prices devuelve imagen y ficha oficial", async () => {
+  await withApi(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/prices?query=coca`);
+    const body = (await response.json()) as { data: Row[] };
+    assert.equal(body.data[0]?.image_url, "https://example.com/coca-2.jpg");
+    assert.equal(
+      body.data[0]?.store_product_url,
+      "https://www.smartnfinal.com.mx/tienda/coca/",
     );
   });
 });
@@ -245,5 +273,14 @@ test("/api/v1/branches expone sucursales normalizadas", async () => {
     const body = (await response.json()) as { data: Row[] };
     assert.equal(body.data[0]?.name, "Sucursal Centro");
     assert.equal(body.data[0]?.geocoding_status, "manual");
+  });
+});
+
+test("/api/v1/quality expone métricas de confianza", async () => {
+  await withApi(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/quality`);
+    const body = (await response.json()) as { data: Row };
+    assert.equal(body.data.with_image, 31);
+    assert.equal(body.data.implausible_prices, 0);
   });
 });

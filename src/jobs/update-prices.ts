@@ -1,4 +1,5 @@
 import { saveScrapedProduct } from "../db/save-scraped-product.js";
+import { validateDirectProduct } from "../data-quality/direct-product.js";
 import { productsTest } from "../products/products-test.js";
 import { scrapeMock } from "../scrapers/mock.js";
 import type { StoreScraper } from "../scrapers/types.js";
@@ -18,6 +19,7 @@ export async function updatePrices({
   let processedProducts = 0;
   let savedPrices = 0;
   let errors = 0;
+  let rejectedProducts = 0;
 
   for (const productMeta of products) {
     for (const searchTerm of productMeta.searchTerms) {
@@ -52,6 +54,14 @@ export async function updatePrices({
             await Promise.all(
               batch.map(async (product) => {
                 try {
+                  const quality = validateDirectProduct(product);
+                  if (!quality.accepted) {
+                    rejectedProducts += 1;
+                    console.warn(
+                      `[${result.storeSlug}] Rechazado ${product.externalName}: ${quality.issues.join(", ")}`,
+                    );
+                    return;
+                  }
                   await saveScrapedProduct(product);
                   if (product.price !== null) savedPrices += 1;
                 } catch (error) {
@@ -76,6 +86,7 @@ export async function updatePrices({
     processedProducts,
     savedPrices,
     errors,
+    rejectedProducts,
     totalTimeMs: Date.now() - startedAt,
   });
 }

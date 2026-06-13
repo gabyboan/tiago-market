@@ -1,6 +1,5 @@
 import type express from "express";
 import { z } from "zod";
-import type { Database } from "@supabase/supabase-js";
 import { supabase } from "../db/supabase.js";
 import { env } from "../config/env.js";
 
@@ -29,7 +28,8 @@ type GoogleAuthInput = z.infer<typeof googleAuthSchema>;
 type SetRoleInput = z.infer<typeof setRoleSchema>;
 type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
-const GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo?id_token=";
+const GOOGLE_TOKENINFO_URL =
+  "https://oauth2.googleapis.com/tokeninfo?id_token=";
 
 interface GoogleIdTokenPayload {
   aud: string;
@@ -40,8 +40,12 @@ interface GoogleIdTokenPayload {
   sub: string;
 }
 
-async function verifyGoogleIdToken(idToken: string): Promise<GoogleIdTokenPayload> {
-  const response = await fetch(`${GOOGLE_TOKENINFO_URL}${encodeURIComponent(idToken)}`);
+async function verifyGoogleIdToken(
+  idToken: string,
+): Promise<GoogleIdTokenPayload> {
+  const response = await fetch(
+    `${GOOGLE_TOKENINFO_URL}${encodeURIComponent(idToken)}`,
+  );
   if (!response.ok) {
     throw new Error("ID token inválido o expirado.");
   }
@@ -62,42 +66,55 @@ async function verifyGoogleIdToken(idToken: string): Promise<GoogleIdTokenPayloa
 export async function authenticateGoogleUser(
   googleAuth: GoogleAuthInput,
   request: express.Request,
-  response: express.Response
+  response: express.Response,
 ) {
   try {
     const payload = await verifyGoogleIdToken(googleAuth.idToken);
 
     if (payload.email !== googleAuth.email) {
-      return sendAuthError(response, 400, "EMAIL_MISMATCH", "El correo del token no coincide.");
+      return sendAuthError(
+        response,
+        400,
+        "EMAIL_MISMATCH",
+        "El correo del token no coincide.",
+      );
     }
 
-    const { data: existingUser, error: getUserError } = await supabase.auth.admin.getUserByEmail(
-      googleAuth.email,
+    const { data: usersData, error: getUserError } =
+      await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const existingUser = usersData?.users.find(
+      (user) => user.email === googleAuth.email,
     );
 
     let userId: string;
     let isNewUser = false;
 
-    if (getUserError || !existingUser?.user) {
-      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-        email: googleAuth.email,
-        email_confirm: true,
-        user_metadata: {
-          name: googleAuth.name,
-          picture: googleAuth.picture,
-          provider: "google",
-          google_sub: payload.sub,
-        },
-      });
+    if (getUserError || !existingUser) {
+      const { data: newUser, error: createError } =
+        await supabase.auth.admin.createUser({
+          email: googleAuth.email,
+          email_confirm: true,
+          user_metadata: {
+            name: googleAuth.name,
+            picture: googleAuth.picture,
+            provider: "google",
+            google_sub: payload.sub,
+          },
+        });
 
       if (createError || !newUser.user) {
-        return sendAuthError(response, 500, "USER_CREATION_FAILED", createError?.message);
+        return sendAuthError(
+          response,
+          500,
+          "USER_CREATION_FAILED",
+          createError?.message ?? "No se pudo crear el usuario.",
+        );
       }
 
       userId = newUser.user.id;
       isNewUser = true;
     } else {
-      userId = existingUser.user.id;
+      userId = existingUser.id;
     }
 
     const { error: profileError } = await supabase.from("user_profiles").upsert(
@@ -114,7 +131,12 @@ export async function authenticateGoogleUser(
     );
 
     if (profileError) {
-      return sendAuthError(response, 500, "PROFILE_CREATION_FAILED", profileError.message);
+      return sendAuthError(
+        response,
+        500,
+        "PROFILE_CREATION_FAILED",
+        profileError.message,
+      );
     }
 
     const { data: profileRow, error: profileRowError } = await supabase
@@ -124,7 +146,12 @@ export async function authenticateGoogleUser(
       .single();
 
     if (profileRowError) {
-      return sendAuthError(response, 500, "PROFILE_READ_FAILED", profileRowError.message);
+      return sendAuthError(
+        response,
+        500,
+        "PROFILE_READ_FAILED",
+        profileRowError.message,
+      );
     }
 
     sendSuccess(response, {
@@ -147,13 +174,16 @@ export async function setUserRole(
   userId: string,
   roleData: SetRoleInput,
   request: express.Request,
-  response: express.Response
+  response: express.Response,
 ) {
   try {
-    const { error } = await supabase.from("user_profiles").update({
-      role: roleData.role,
-      role_set_at: new Date().toISOString(),
-    }).eq("id", userId);
+    const { error } = await supabase
+      .from("user_profiles")
+      .update({
+        role: roleData.role,
+        role_set_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
 
     if (error) {
       return sendAuthError(response, 500, "ROLE_UPDATE_FAILED", error.message);
@@ -172,7 +202,7 @@ export async function setUserRole(
 export async function getUserProfile(
   userId: string,
   request: express.Request,
-  response: express.Response
+  response: express.Response,
 ) {
   try {
     const { data: profile, error } = await supabase
@@ -197,7 +227,7 @@ export async function updateUserProfile(
   userId: string,
   profileData: UpdateProfileInput,
   request: express.Request,
-  response: express.Response
+  response: express.Response,
 ) {
   try {
     const updateData: Record<string, unknown> = {
@@ -207,7 +237,8 @@ export async function updateUserProfile(
     if (profileData.name) updateData.name = profileData.name;
     if (profileData.phone) updateData.phone = profileData.phone;
     if (profileData.store_name) updateData.store_name = profileData.store_name;
-    if (profileData.store_location) updateData.store_location = profileData.store_location;
+    if (profileData.store_location)
+      updateData.store_location = profileData.store_location;
 
     const { error } = await supabase
       .from("user_profiles")
@@ -215,7 +246,12 @@ export async function updateUserProfile(
       .eq("id", userId);
 
     if (error) {
-      return sendAuthError(response, 500, "PROFILE_UPDATE_FAILED", error.message);
+      return sendAuthError(
+        response,
+        500,
+        "PROFILE_UPDATE_FAILED",
+        error.message,
+      );
     }
 
     sendSuccess(response, {
@@ -228,11 +264,15 @@ export async function updateUserProfile(
 }
 
 // Utilidades
-function sendSuccess(response: express.Response, data: unknown, meta?: unknown) {
+function sendSuccess(
+  response: express.Response,
+  data: unknown,
+  meta?: unknown,
+) {
   response.status(200).json({
     success: true,
     data,
-    ...(meta && { meta }),
+    ...(meta === undefined ? {} : { meta }),
   });
 }
 
@@ -240,7 +280,7 @@ function sendAuthError(
   response: express.Response,
   status: number,
   code: string,
-  message: string
+  message: string,
 ) {
   response.status(status).json({
     success: false,
@@ -263,7 +303,7 @@ export function registerAuthRoutes(app: express.Express) {
           response,
           400,
           "VALIDATION_ERROR",
-          error.errors[0]?.message || "Datos inválidos"
+          error.errors[0]?.message || "Datos inválidos",
         );
       }
       sendAuthError(response, 500, "AUTH_ERROR", String(error));
@@ -275,7 +315,12 @@ export function registerAuthRoutes(app: express.Express) {
     try {
       const userId = request.headers["x-user-id"] as string;
       if (!userId) {
-        return sendAuthError(response, 401, "UNAUTHORIZED", "User ID requerido");
+        return sendAuthError(
+          response,
+          401,
+          "UNAUTHORIZED",
+          "User ID requerido",
+        );
       }
 
       const body = setRoleSchema.parse(request.body);
@@ -286,7 +331,7 @@ export function registerAuthRoutes(app: express.Express) {
           response,
           400,
           "VALIDATION_ERROR",
-          error.errors[0]?.message || "Datos inválidos"
+          error.errors[0]?.message || "Datos inválidos",
         );
       }
       sendAuthError(response, 500, "ROLE_ERROR", String(error));
@@ -298,7 +343,12 @@ export function registerAuthRoutes(app: express.Express) {
     try {
       const userId = request.headers["x-user-id"] as string;
       if (!userId) {
-        return sendAuthError(response, 401, "UNAUTHORIZED", "User ID requerido");
+        return sendAuthError(
+          response,
+          401,
+          "UNAUTHORIZED",
+          "User ID requerido",
+        );
       }
 
       await getUserProfile(userId, request, response);
@@ -312,7 +362,12 @@ export function registerAuthRoutes(app: express.Express) {
     try {
       const userId = request.headers["x-user-id"] as string;
       if (!userId) {
-        return sendAuthError(response, 401, "UNAUTHORIZED", "User ID requerido");
+        return sendAuthError(
+          response,
+          401,
+          "UNAUTHORIZED",
+          "User ID requerido",
+        );
       }
 
       const body = updateProfileSchema.parse(request.body);
@@ -323,7 +378,7 @@ export function registerAuthRoutes(app: express.Express) {
           response,
           400,
           "VALIDATION_ERROR",
-          error.errors[0]?.message || "Datos inválidos"
+          error.errors[0]?.message || "Datos inválidos",
         );
       }
       sendAuthError(response, 500, "UPDATE_ERROR", String(error));

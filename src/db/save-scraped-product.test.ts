@@ -6,7 +6,7 @@ import { snapshotRecord } from "./save-scraped-product.js";
 const product: ScrapedProduct = {
   storeSlug: "tienda",
   storeName: "Tienda",
-  source: "profeco",
+  source: "arteli-direct",
   sourceProductName: "Producto observado",
   sourceStoreName: "Tienda",
   sourceBranchName: "Sucursal",

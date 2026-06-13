@@ -9,8 +9,11 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "scrape:mock": "tsx src/jobs/update-prices.ts",
-    "scrape:profeco": "tsx src/jobs/update-profeco-prices.ts",
-    "import:profeco-catalog": "tsx src/jobs/import-profeco-catalog.ts",
+    "scrape:arteli": "tsx src/jobs/update-arteli-prices.ts",
+    "scrape:smart-final": "tsx src/jobs/update-smart-final-prices.ts",
+    "scrape:calimax": "tsx src/jobs/update-calimax-prices.ts",
+    "import:direct-catalog": "tsx src/jobs/import-direct-catalog.ts",
+    "import:chedraui-branches": "tsx src/jobs/import-chedraui-branches.ts",
     "geocode:branches": "tsx src/jobs/geocode-branches.ts",
     "api": "tsx src/api/server.ts",
     "lint": "eslint .",
@@ -39,6 +42,7 @@
     "typescript-eslint": "^8.32.0"
   },
   "engines": {
-    "node": ">=20"
-  }
+    "node": ">=22.13"
+  },
+  "packageManager": "pnpm@11.5.3+sha512.7ac1c919341c213a34dc0d02afb7143c5c26ac26ee8c4782deea821b8ac64d2134a081fd8941dae6e29bbb48f58dfc2b7fbceeccc07cb2f09d219d342a4969ed"
 }

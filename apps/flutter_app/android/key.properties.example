@@ -1,0 +1,4 @@
+storePassword=replace-me
+keyPassword=replace-me
+keyAlias=tiago-market
+storeFile=/absolute/path/to/tiago-market-upload.jks
