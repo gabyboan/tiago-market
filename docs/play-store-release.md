@@ -21,11 +21,10 @@ La clave de carga actual se guardó localmente fuera del repositorio en
 17:A4:BD:83:49:FA:68:35:AE:50:B5:A5:C5:A0:B2:3B:F5:51:3F:05
 ```
 
-La SHA-1 y SHA-256 de carga ya están registradas en Firebase. Antes de distribuir
-una APK firmada con esa clave, crea además su cliente OAuth Android en Google
-Auth Platform. Al habilitar Play App Signing también debe registrarse la SHA-1
-de firma que Google Play asigne a la aplicación y crear su cliente OAuth
-Android.
+La SHA-1 y SHA-256 de carga ya están registradas en Firebase y la SHA-1 tiene su
+cliente OAuth Android en Google Auth Platform. Al habilitar Play App Signing
+también debe registrarse la SHA-1 de firma que Google Play asigne a la
+aplicación y crear su cliente OAuth Android.
 
 ## Paquete
 

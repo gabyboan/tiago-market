@@ -55,10 +55,10 @@ firme la aplicación. Todos deben usar el package
 
 - Debug SHA-1 registrado:
   `74:FB:3B:D2:68:E9:94:4D:9B:3F:0C:C1:C9:1F:6E:EC:E8:AC:90:DB`
-- Upload SHA-1 registrado en Firebase:
+- Upload SHA-1 registrado en Firebase y Google Auth Platform:
   `17:A4:BD:83:49:FA:68:35:AE:50:B5:A5:C5:A0:B2:3B:F5:51:3F:05`
-- Pendiente: crear en **Google Auth Platform > Clients** un cliente Android
-  para la Upload SHA-1.
+- El cliente Android actual usa la Upload SHA-1. Para recuperar Google Sign-In
+  en builds debug, crear un segundo cliente Android con la Debug SHA-1.
 - Pendiente al publicar: crear otro cliente Android con la SHA-1 de **App
   signing key certificate** que muestre Google Play Console.
 
