@@ -1,7 +1,7 @@
 # Tiago Market Prototype
 
 Backend y fuente de datos para una futura aplicación Flutter de comparación de
-precios de supermercados mexicanos.
+precios de tiendas en mexico
 
 ## Etapa 0.7
 
@@ -32,6 +32,7 @@ Completar `.env` con:
 ```dotenv
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 PORT=3000
 NODE_ENV=development
 PROFECO_CITY_CODE=0901
@@ -48,6 +49,18 @@ GEOCODING_BRANCH_LIMIT=10
 GEOCODING_REQUEST_DELAY_MS=1100
 GEOCODING_MIN_CONFIDENCE=0.8
 ```
+
+### Configuración de Google Sign In y Supabase
+1. En Google Cloud Console, abre el proyecto correcto.
+2. Ve a `APIs y servicios` → `Biblioteca` y habilita `Google Identity Services`.
+3. Ve a `APIs y servicios` → `Credenciales` → `Crear credenciales` → `ID de cliente de OAuth`.
+4. Selecciona `Aplicación web` y añade estos valores autorizados:
+   - Origen autorizado: `https://your-project.supabase.co`
+   - URI de redirección autorizado: `https://your-project.supabase.co/auth/v1/callback`
+5. Copia el `Client ID` y `Client Secret`.
+6. En Supabase, ve a `Authentication` → `Providers` → `Google` y pega el `Client ID` y el `Client Secret`.
+7. Guarda y activa el proveedor Google.
+8. Coloca `GOOGLE_CLIENT_ID` en tu `.env` con el valor de `Client ID`.
 
 La `SUPABASE_SERVICE_ROLE_KEY` es exclusivamente para backend. Nunca debe
 exponerse en la aplicación Flutter.

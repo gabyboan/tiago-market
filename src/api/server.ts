@@ -9,6 +9,7 @@ import { z } from "zod";
 import { env } from "../config/env.js";
 import { daysOld } from "../data-quality.js";
 import { supabase } from "../db/supabase.js";
+import { registerAuthRoutes } from "./auth.js";
 
 const API_VERSION = "v1";
 const MAX_PAGE_SIZE = 50;
@@ -524,6 +525,7 @@ export function createApi(database: Database = supabase) {
   );
 
   registerApiRoutes(app, database);
+  registerAuthRoutes(app);
 
   app.use((_request, response) => {
     sendError(response, 404, "NOT_FOUND", "Endpoint no encontrado.");
