@@ -1,0 +1,36 @@
+workflows:
+  ios-simulator-preview:
+    name: Flutter iOS Simulator Preview
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+    scripts:
+      - name: Show versions
+        script: |
+          flutter --version
+          xcodebuild -version
+
+      - name: Get Flutter dependencies
+        script: |
+          cd apps/flutter_app
+          flutter pub get
+
+      - name: Build iOS simulator app
+        script: |
+          cd apps/flutter_app
+          flutter build ios --simulator --debug
+
+      - name: Export iOS simulator app
+        script: |
+          mkdir -p "$CM_EXPORT_DIR"
+          cd apps/flutter_app/build/ios/iphonesimulator
+          ditto -c -k --sequesterRsrc --keepParent Runner.app "$CM_EXPORT_DIR/ios-simulator-app.zip"
+
+    artifacts:
+      - $CM_EXPORT_DIR/ios-simulator-app.zip
+      - apps/flutter_app/build/ios/iphonesimulator/Runner.app
