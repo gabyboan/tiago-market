@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+const _googleIosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
 const _googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
 
 final _googleSignIn = GoogleSignIn(
-  scopes: const <String>['email', 'profile'],
+  clientId: _googleIosClientId,
   serverClientId: _googleWebClientId,
+  scopes: const <String>['email', 'profile'],
 );
 
 class GoogleAuthService {
@@ -26,6 +28,12 @@ class GoogleAuthService {
       return;
     }
 
+    if (_googleIosClientId.isEmpty) {
+      throw AuthException(
+        'Falta configurar GOOGLE_IOS_CLIENT_ID en la aplicación.',
+      );
+    }
+
     if (_googleWebClientId.isEmpty) {
       throw AuthException(
         'Falta configurar GOOGLE_WEB_CLIENT_ID en la aplicación.',
@@ -36,15 +44,22 @@ class GoogleAuthService {
     if (googleAccount == null) return;
 
     final googleAuth = await googleAccount.authentication;
+
     final idToken = googleAuth.idToken;
+    final accessToken = googleAuth.accessToken;
+
     if (idToken == null) {
       throw AuthException('Google no devolvió un ID token.');
+    }
+
+    if (accessToken == null) {
+      throw AuthException('Google no devolvió un access token.');
     }
 
     await Supabase.instance.client.auth.signInWithIdToken(
       provider: OAuthProvider.google,
       idToken: idToken,
-      accessToken: googleAuth.accessToken,
+      accessToken: accessToken,
     );
   }
 

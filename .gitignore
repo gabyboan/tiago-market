@@ -3,6 +3,8 @@ dist/
 env-root/
 __pycache__/
 .env
+.DS_Store
+=22.13
 .agents/
 .codex/
 skills-lock.json
@@ -10,3 +12,16 @@ supabase/.temp/
 playwright-report/
 test-results/
 *.log
+*.bak
+*.fixbak
+
+# Local credentials and generated working files
+json's/
+/*.py
+catalogo_productos.json
+inventario_total_supermercados.txt
+productos_lacteos.txt
+captura de problemas/
+apps/.DS_Store
+apps/flutter_app/ios_backup_*/
+apps/flutter_app/devtools_options.yaml
