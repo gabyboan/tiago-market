@@ -45,3 +45,5 @@ app.*.map.json
 /android/app/release
 dart_defines.local.json
 supabase/.temp/
+**/google-services.json
+**/GoogleService-Info.plist

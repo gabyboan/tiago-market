@@ -38,8 +38,9 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 
-  testWidgets('muestra el detalle al abrir un producto con un solo precio',
-      (tester) async {
+  testWidgets('muestra el detalle al abrir un producto con un solo precio', (
+    tester,
+  ) async {
     final group = ProductComparisonGroup(
       comparisonKey: 'telera',
       productName: 'Telera',
@@ -69,12 +70,16 @@ void main() {
     await tester.tap(find.byType(ExpansionTile));
     await tester.pumpAndSettle();
 
-    expect(find.text('Precio publicado online'), findsOneWidget);
+    expect(
+      find.text('Precios online, no verificados para una sucursal cercana.'),
+      findsOneWidget,
+    );
     expect(find.textContaining('\$2.00'), findsNWidgets(2));
   });
 
-  testWidgets('muestra totales interpolados en la lista de compras',
-      (tester) async {
+  testWidgets('muestra totales interpolados en la lista de compras', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(splashFactory: InkRipple.splashFactory),
@@ -105,8 +110,9 @@ void main() {
     expect(find.textContaining('toStringAsFixed'), findsNothing);
   });
 
-  testWidgets('permite eliminar un producto desde la hoja de lista',
-      (tester) async {
+  testWidgets('permite eliminar un producto desde la hoja de lista', (
+    tester,
+  ) async {
     final item = ShoppingItem(
       comparisonKey: 'leche',
       productName: 'Leche',
@@ -182,8 +188,9 @@ void main() {
     expect(find.text('Tu lista está vacía'), findsOneWidget);
   });
 
-  testWidgets('deshabilita compartir y vaciar cuando la lista está vacía',
-      (tester) async {
+  testWidgets('deshabilita compartir y vaciar cuando la lista está vacía', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(

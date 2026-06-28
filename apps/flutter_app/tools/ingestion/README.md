@@ -11,6 +11,9 @@ No se cargan datos inventados en produccion. Las plantillas pueden existir para
 probar el formato, pero deben marcarse con `is_synthetic = true` y nunca deben
 pasar a `ingestion.publishable_source_prices`.
 
+El runbook V1, la matriz de cobertura y los riesgos operativos están en
+[`docs/data-ingestion-v1-runbook.md`](../../docs/data-ingestion-v1-runbook.md).
+
 ## Campos minimos para publicar
 
 Cada registro real debe traer, como minimo:
@@ -130,27 +133,42 @@ Depot Mexico que la web consume:
 
 El scraper emite solo registros con sucursal y coordenadas de Mexico. Por
 defecto respeta `Crawl-delay: 7` usando `--delay-ms 7000`.
+El cierre de cada corrida informa por sucursal y término: candidatos crudos,
+candidatos con evidencia local, emitidos, rechazos agrupados por causa,
+advertencias, requests, reintentos y códigos HTTP.
 
-Generar una muestra chica cerca de CDMX:
+Generar la muestra controlada de cobertura cerca de CDMX:
 
 ```bash
 dart run tools/ingestion/bin/home_depot_mx_scraper.dart \
   --latitude 19.432608 \
   --longitude -99.133209 \
-  --branch home-depot-mx:8860 \
-  --terms pintura \
-  --limit 20 \
-  --output /tmp/home-depot-branch.ndjson
+  --branch-limit 3 \
+  --terms pintura,herramientas,escalera,sellador,focos,adhesivo \
+  --search-limit 3 \
+  --products-per-term 3 \
+  --limit 54 \
+  --delay-ms 7000 \
+  --timeout-ms 20000 \
+  --max-attempts 3 \
+  --backoff-ms 2000 \
+  --output /tmp/home-depot-cdmx-coverage.ndjson \
+  2> /tmp/home-depot-cdmx-coverage-scraper-report.txt
 ```
 
-Generar SQL sin cargar:
+Validar primero, sin generar SQL ni conectarse a Supabase:
 
 ```bash
 dart run tools/ingestion/bin/stage_ndjson.dart \
-  --input /tmp/home-depot-branch.ndjson \
+  --input /tmp/home-depot-cdmx-coverage.ndjson \
   --run-source home-depot-mx \
-  --sql-out /tmp/home_depot_stage.sql
+  --validate-only \
+  --report-out /tmp/home-depot-cdmx-coverage-report.txt
 ```
+
+Si existe cualquier fila rechazada, la generación de SQL se bloquea. El modo
+`--allow-partial` debe ser una decisión manual explícita. Los textos del NDJSON
+se serializan sin compactar ni normalizar espacios internos.
 
 Importar el NDJSON a Supabase sin hardcodear secretos:
 
@@ -160,6 +178,19 @@ dart run tools/ingestion/bin/stage_ndjson.dart \
   --input /tmp/home-depot-branch.ndjson \
   --run-source home-depot-mx \
   --execute
+```
+
+El SQL generado requiere la restricción única de staging incluida en
+`supabase/migrations/20260624000000_harden_ingestion_idempotency.sql`. Esa
+migración también separa la identidad de snapshots online de la identidad
+`(store_product_id, branch_id, captured_at)` usada para sucursales.
+
+Reporte operativo de cobertura:
+
+```bash
+psql "$SUPABASE_DB_URL" \
+  --set ON_ERROR_STOP=1 \
+  --file tools/ingestion/sql/source_coverage_report.sql
 ```
 
 ## Geolocalizacion en app

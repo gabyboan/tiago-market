@@ -3,11 +3,17 @@
 Backend y fuente de datos para una futura aplicación Flutter de comparación de
 precios de tiendas en mexico
 
-## Etapa 0.7
+## Etapa 0.8
 
 El prototipo implementa el flujo:
 
 `fuente -> snapshots auditables -> sucursales -> API geográfica -> Flutter`
+
+La etapa 0.8 integra el cliente Flutter `0.2.1+3`, endurece la ingesta
+idempotente, documenta el estado verificable de las fuentes y agrega una build
+Android de demostración configurada mediante `dart-define`. El detalle de lo
+validado, pendiente y no aplicado está en
+[`docs/release-audit-v0.8.0.md`](docs/release-audit-v0.8.0.md).
 
 La primera fuente real es la herramienta pública Quién es Quién en los Precios
 (QQP) de PROFECO. Sus precios son observaciones con fecha, fuente y sucursal;
@@ -51,6 +57,7 @@ GEOCODING_MIN_CONFIDENCE=0.8
 ```
 
 ### Configuración de Google Sign In y Supabase
+
 1. En Google Cloud Console, abre el proyecto correcto.
 2. Ve a `APIs y servicios` → `Biblioteca` y habilita `Google Identity Services`.
 3. Ve a `APIs y servicios` → `Credenciales` → `Crear credenciales` → `ID de cliente de OAuth`.
@@ -195,11 +202,13 @@ de PROFECO de lunes a viernes y también puede ejecutarse manualmente desde
 GitHub Actions. Requiere los secretos `SUPABASE_URL` y
 `SUPABASE_SERVICE_ROLE_KEY`.
 
-## Demo Flutter
+## Aplicación Flutter
 
-La demo mínima está en `apps/flutter_app`. Consume exclusivamente la API y
-muestra precio, supermercado, sucursal, fuente, fecha relativa y freshness.
-Usa datos de ejemplo mientras la API no tenga una URL pública:
+La aplicación está en `apps/flutter_app`. Incluye onboarding, acceso invitado,
+Google Auth opcional mediante Supabase, búsqueda, categorías, ubicación,
+fallback explícito a precios online, favoritos y lista de compras persistente.
+También separa precios por sucursal de referencias online y muestra fuente,
+fecha y frescura de cada observación.
 
 ```bash
 cd apps/flutter_app
@@ -211,6 +220,18 @@ Para conectarla a la API desplegada:
 ```bash
 flutter run --dart-define=API_BASE_URL=https://api.example.com
 ```
+
+Para una build local configurada, usar un archivo ignorado por Git:
+
+```bash
+cd apps/flutter_app
+flutter build apk --release \
+  --dart-define-from-file=dart_defines.local.json
+```
+
+La APK de esta etapa es demostrativa mientras use firma debug. Publicar en Play
+Store requiere keystore de producción, App Links/Universal Links y completar la
+verificación extremo a extremo de OAuth.
 
 ## Decisiones técnicas
 

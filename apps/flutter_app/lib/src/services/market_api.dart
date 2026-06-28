@@ -151,8 +151,9 @@ class MarketApi {
 
   Future<void> sendFeedback(String message) async {
     if (apiBaseUrl.isEmpty) throw Exception('API no configurada');
-    final userId =
-        authEnabled ? Supabase.instance.client.auth.currentUser?.id : null;
+    final userId = authEnabled
+        ? Supabase.instance.client.auth.currentUser?.id
+        : null;
     final response = await http
         .post(
           Uri.parse('$apiBaseUrl/api/v1/feedback'),
@@ -160,7 +161,7 @@ class MarketApi {
           body: jsonEncode({
             'message': message.trim(),
             'user_id': userId,
-            'context': {'platform': 'flutter', 'app_version': '0.2.0'},
+            'context': {'platform': 'flutter', 'app_version': '0.2.1'},
           }),
         )
         .timeout(const Duration(seconds: 10));
