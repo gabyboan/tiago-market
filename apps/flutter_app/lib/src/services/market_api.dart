@@ -61,9 +61,10 @@ class MarketApi {
 
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final data = body['data'] as List<dynamic>? ?? [];
-      final results = data
-          .map((item) => PriceResult.fromJson(item as Map<String, dynamic>))
-          .toList();
+      final results = _validPilotResults(
+        data.map((item) => PriceResult.fromJson(item as Map<String, dynamic>)),
+        requireBranch: false,
+      );
       final preferences = await SharedPreferences.getInstance();
       await preferences.setString(
         cacheKey,
@@ -76,9 +77,11 @@ class MarketApi {
       final cached = preferences.getString(cacheKey);
       if (cached == null) rethrow;
       usedCache = true;
-      return (jsonDecode(cached) as List<dynamic>)
-          .map((item) => PriceResult.fromJson(item as Map<String, dynamic>))
-          .toList();
+      return _validPilotResults(
+        (jsonDecode(cached) as List<dynamic>)
+            .map((item) => PriceResult.fromJson(item as Map<String, dynamic>)),
+        requireBranch: false,
+      );
     }
   }
 
@@ -95,7 +98,7 @@ class MarketApi {
     }
 
     final response = await _rpcList(
-      'nearby_prices',
+      'nearby_prices_v2',
       params: {
         'search_query': query.trim(),
         'user_latitude': latitude,
@@ -106,10 +109,11 @@ class MarketApi {
     );
 
     usedCache = false;
-    return response
-        .map((item) => PriceResult.fromJson(item as Map<String, dynamic>))
-        .where((result) => result.branchName != null)
-        .toList();
+    return _validPilotResults(
+      response
+          .map((item) => PriceResult.fromJson(item as Map<String, dynamic>)),
+      requireBranch: true,
+    );
   }
 
   Future<List<PriceResult>> _onlinePricesFromSupabase(
@@ -118,7 +122,7 @@ class MarketApi {
     String? category,
   }) async {
     final response = await _rpcList(
-      'online_prices',
+      'online_prices_v2',
       params: {
         'search_query': query.trim(),
         'limit_count': 100,
@@ -129,9 +133,11 @@ class MarketApi {
     );
 
     usedCache = false;
-    return response
-        .map((item) => PriceResult.fromJson(item as Map<String, dynamic>))
-        .toList();
+    return _validPilotResults(
+      response
+          .map((item) => PriceResult.fromJson(item as Map<String, dynamic>)),
+      requireBranch: false,
+    );
   }
 
   Future<List<ProductCategory>> categories() async {
@@ -151,9 +157,8 @@ class MarketApi {
 
   Future<void> sendFeedback(String message) async {
     if (apiBaseUrl.isEmpty) throw Exception('API no configurada');
-    final userId = authEnabled
-        ? Supabase.instance.client.auth.currentUser?.id
-        : null;
+    final userId =
+        authEnabled ? Supabase.instance.client.auth.currentUser?.id : null;
     final response = await http
         .post(
           Uri.parse('$apiBaseUrl/api/v1/feedback'),
@@ -161,7 +166,7 @@ class MarketApi {
           body: jsonEncode({
             'message': message.trim(),
             'user_id': userId,
-            'context': {'platform': 'flutter', 'app_version': '0.2.1'},
+            'context': {'platform': 'flutter', 'app_version': '0.2.2'},
           }),
         )
         .timeout(const Duration(seconds: 10));
@@ -206,5 +211,22 @@ class MarketApi {
       debugPrintStack(stackTrace: stackTrace);
       rethrow;
     }
+  }
+
+  List<PriceResult> _validPilotResults(
+    Iterable<PriceResult> results, {
+    required bool requireBranch,
+  }) {
+    final now = DateTime.now().toUtc();
+    return results
+        .where(
+          (result) =>
+              result.pilotRejectionReason(
+                requireBranch: requireBranch,
+                now: now,
+              ) ==
+              null,
+        )
+        .toList();
   }
 }

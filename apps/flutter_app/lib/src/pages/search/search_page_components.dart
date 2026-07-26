@@ -121,9 +121,8 @@ class _SearchInputRow extends StatelessWidget {
             leading: const Icon(Icons.search_rounded),
             trailing: [
               IconButton(
-                onPressed: controller.loading
-                    ? null
-                    : () => controller.submitSearch(),
+                onPressed:
+                    controller.loading ? null : () => controller.submitSearch(),
                 icon: const Icon(Icons.arrow_forward_rounded),
               ),
             ],
@@ -145,7 +144,10 @@ class _SearchInputRow extends StatelessWidget {
 }
 
 class _QuickSearchChips extends StatelessWidget {
-  const _QuickSearchChips({required this.loading, required this.onSelected});
+  const _QuickSearchChips({
+    required this.loading,
+    required this.onSelected,
+  });
 
   final bool loading;
   final ValueChanged<String> onSelected;
@@ -223,9 +225,9 @@ class _SearchHistorySection extends StatelessWidget {
           children: [
             Text(
               'Búsquedas recientes',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
             ),
             const Spacer(),
             TextButton(
@@ -264,9 +266,8 @@ class _LocationControls extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         FilledButton.tonalIcon(
-          onPressed: controller.locating
-              ? null
-              : () => controller.useLocation(),
+          onPressed:
+              controller.locating ? null : () => controller.useLocation(),
           icon: controller.locating
               ? const SizedBox.square(
                   dimension: 16,
@@ -339,9 +340,9 @@ class _FavoritesSection extends StatelessWidget {
           children: [
             Text(
               'Favoritos guardados',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
             ),
             const Spacer(),
             TextButton(
@@ -372,8 +373,9 @@ class _FavoritesSection extends StatelessWidget {
               final favorite = controller.favorites[index];
               return ActionChip(
                 label: Text(favorite.productName),
-                onPressed: () =>
-                    controller.submitSearch(quickQuery: favorite.productName),
+                onPressed: () => controller.submitSearch(
+                  quickQuery: favorite.productName,
+                ),
               );
             },
           ),
@@ -392,13 +394,11 @@ class _NoticeSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final notices = <Widget>[];
     if (controller.usingDemo) {
-      notices.add(
-        const NoticeCard(
-          icon: Icons.science_outlined,
-          text:
-              'Vista demo. Al desplegar la API, esta pantalla mostrará datos en vivo.',
-        ),
-      );
+      notices.add(const NoticeCard(
+        icon: Icons.science_outlined,
+        text:
+            'Vista demo. Al desplegar la API, esta pantalla mostrará datos en vivo.',
+      ));
     }
     if (controller.error != null) {
       notices.add(
@@ -406,28 +406,21 @@ class _NoticeSection extends StatelessWidget {
       );
     }
     if (controller.showingOnlineFallback && controller.results.isNotEmpty) {
-      notices.add(
-        NoticeCard(
-          icon: Icons.storefront_outlined,
-          text:
-              controller.localEmptyMessage ??
-              'Para esta búsqueda todavía no encontramos precios por sucursal cerca. Mostramos precios online cuando estén disponibles.',
-        ),
-      );
-      notices.add(
-        const NoticeCard(
-          icon: Icons.public_rounded,
-          text: 'Precios online, no verificados para una sucursal cercana.',
-        ),
-      );
+      notices.add(NoticeCard(
+        icon: Icons.storefront_outlined,
+        text: controller.localEmptyMessage ??
+            'Para esta búsqueda todavía no encontramos precios por sucursal cerca. Mostramos precios online cuando estén disponibles.',
+      ));
+      notices.add(const NoticeCard(
+        icon: Icons.public_rounded,
+        text: 'Precios online, no verificados para una sucursal cercana.',
+      ));
     }
     if (controller.usingCache) {
-      notices.add(
-        const NoticeCard(
-          icon: Icons.offline_bolt_outlined,
-          text: 'Sin conexión estable. Mostrando la última consulta guardada.',
-        ),
-      );
+      notices.add(const NoticeCard(
+        icon: Icons.offline_bolt_outlined,
+        text: 'Sin conexión estable. Mostrando la última consulta guardada.',
+      ));
     }
 
     if (notices.isEmpty) return const SizedBox.shrink();
@@ -435,14 +428,20 @@ class _NoticeSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final notice in notices) ...[notice, const SizedBox(height: 10)],
+        for (final notice in notices) ...[
+          notice,
+          const SizedBox(height: 10),
+        ],
       ],
     );
   }
 }
 
 class _ResultsHeader extends StatelessWidget {
-  const _ResultsHeader({required this.groupsCount, required this.pricesCount});
+  const _ResultsHeader({
+    required this.groupsCount,
+    required this.pricesCount,
+  });
 
   final int groupsCount;
   final int pricesCount;
@@ -453,9 +452,9 @@ class _ResultsHeader extends StatelessWidget {
       children: [
         Text(
           'Mejores precios',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
         ),
         const Spacer(),
         Text(
@@ -470,7 +469,10 @@ class _ResultsHeader extends StatelessWidget {
 }
 
 class _SearchResults extends StatelessWidget {
-  const _SearchResults({required this.controller, required this.groups});
+  const _SearchResults({
+    required this.controller,
+    required this.groups,
+  });
 
   final local.SearchController controller;
   final List<ProductComparisonGroup> groups;
@@ -485,7 +487,9 @@ class _SearchResults extends StatelessWidget {
     }
 
     if (controller.results.isEmpty) {
-      return Center(child: Text(controller.emptyMessage));
+      return Center(
+        child: Text(controller.emptyMessage),
+      );
     }
 
     return Column(
@@ -511,7 +515,9 @@ class _SearchResults extends StatelessWidget {
             !controller.usingDemo)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 18),
-            child: Center(child: Text('Desliza para mostrar más productos')),
+            child: Center(
+              child: Text('Desliza para mostrar más productos'),
+            ),
           ),
       ],
     );

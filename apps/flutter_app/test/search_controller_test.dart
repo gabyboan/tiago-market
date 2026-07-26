@@ -15,7 +15,7 @@ class FakeMarketApi extends MarketApi {
   final List<PriceResult> compareResponse;
   final List<ProductCategory> categoriesResponse;
   final List<PriceResult> Function(double? latitude, double? longitude)?
-  compareByLocation;
+      compareByLocation;
   final int nearbyBranchCountResponse;
 
   @override
@@ -93,10 +93,8 @@ void main() {
       price: 32,
       capturedAt: '2026-01-01',
     );
-    final api = FakeMarketApi(
-      compareResponse: [result],
-      categoriesResponse: const [],
-    );
+    final api =
+        FakeMarketApi(compareResponse: [result], categoriesResponse: const []);
     final controller = SearchController(api: api);
 
     await Future<void>.delayed(Duration.zero);
@@ -107,35 +105,33 @@ void main() {
     expect(controller.filteredResults, contains(result));
   });
 
-  test(
-    'usa precios online cuando la ubicacion no tiene precios por sucursal',
-    () async {
-      final onlineResult = PriceResult(
-        storeName: 'Chedraui online',
-        productName: 'Telera',
-        normalizedName: 'telera',
-        price: 2,
-        capturedAt: '2026-01-01',
-      );
-      final api = FakeMarketApi(
-        nearbyBranchCountResponse: 3,
-        compareByLocation: (latitude, longitude) {
-          return latitude == null && longitude == null ? [onlineResult] : [];
-        },
-      );
-      final controller = SearchController(api: api)
-        ..latitude = 19.43
-        ..longitude = -99.13;
+  test('usa precios online cuando la ubicacion no tiene precios por sucursal',
+      () async {
+    final onlineResult = PriceResult(
+      storeName: 'Chedraui online',
+      productName: 'Telera',
+      normalizedName: 'telera',
+      price: 2,
+      capturedAt: '2026-01-01',
+    );
+    final api = FakeMarketApi(
+      nearbyBranchCountResponse: 3,
+      compareByLocation: (latitude, longitude) {
+        return latitude == null && longitude == null ? [onlineResult] : [];
+      },
+    );
+    final controller = SearchController(api: api)
+      ..latitude = 19.43
+      ..longitude = -99.13;
 
-      await Future<void>.delayed(Duration.zero);
-      await controller.searchWithLocationFallback();
+    await Future<void>.delayed(Duration.zero);
+    await controller.searchWithLocationFallback();
 
-      expect(controller.results, contains(onlineResult));
-      expect(controller.showingOnlineFallback, isTrue);
-      expect(controller.nearbyBranches, 3);
-      expect(controller.error, isNull);
-    },
-  );
+    expect(controller.results, contains(onlineResult));
+    expect(controller.showingOnlineFallback, isTrue);
+    expect(controller.nearbyBranches, 3);
+    expect(controller.error, isNull);
+  });
 
   test('guarda historial de busqueda y borra historial', () async {
     final api = FakeMarketApi();

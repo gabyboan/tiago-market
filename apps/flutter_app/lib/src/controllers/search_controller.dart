@@ -82,8 +82,10 @@ class SearchController extends ChangeNotifier {
     }).toList();
   }
 
-  List<ProductComparisonGroup> get groupedResults =>
-      groupPriceResults(filteredResults, sortMode: sortMode);
+  List<ProductComparisonGroup> get groupedResults => groupPriceResults(
+        filteredResults,
+        sortMode: sortMode,
+      );
 
   void _attachScrollListener() {
     scrollController.addListener(() {
@@ -178,7 +180,9 @@ class SearchController extends ChangeNotifier {
 
   Future<void> removeFavorite(FavoriteItem item) async {
     final items = favorites
-        .where((value) => value.comparisonKey != item.comparisonKey)
+        .where(
+          (value) => value.comparisonKey != item.comparisonKey,
+        )
         .toList();
     await FavoritesStorage.save(items);
     favorites = items;
@@ -432,9 +436,8 @@ class SearchController extends ChangeNotifier {
 
   Future<void> updateShoppingItem(ShoppingItem item, int quantity) async {
     final items = [...shoppingItems];
-    final index = items.indexWhere(
-      (value) => value.comparisonKey == item.comparisonKey,
-    );
+    final index =
+        items.indexWhere((value) => value.comparisonKey == item.comparisonKey);
     if (index < 0) return;
     if (quantity <= 0) {
       items.removeAt(index);

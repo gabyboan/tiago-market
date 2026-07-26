@@ -9,10 +9,10 @@ El prototipo implementa el flujo:
 
 `fuente -> snapshots auditables -> sucursales -> API geográfica -> Flutter`
 
-La etapa 0.8 integra el cliente Flutter `0.2.1+3`, endurece la ingesta
-idempotente, documenta el estado verificable de las fuentes y agrega una build
-Android de demostración configurada mediante `dart-define`. El detalle de lo
-validado, pendiente y no aplicado está en
+La prerelease 0.8 integra el cliente Flutter `0.2.1+3`; la rama de preparación
+del piloto avanza a `0.2.2+4`, endurece la ingesta idempotente, documenta el
+estado verificable de las fuentes y separa build debug de release firmado. El
+detalle histórico de lo validado, pendiente y no aplicado está en
 [`docs/release-audit-v0.8.0.md`](docs/release-audit-v0.8.0.md).
 
 La primera fuente real es la herramienta pública Quién es Quién en los Precios
@@ -225,13 +225,15 @@ Para una build local configurada, usar un archivo ignorado por Git:
 
 ```bash
 cd apps/flutter_app
-flutter build apk --release \
+flutter build apk --debug \
   --dart-define-from-file=dart_defines.local.json
 ```
 
-La APK de esta etapa es demostrativa mientras use firma debug. Publicar en Play
-Store requiere keystore de producción, App Links/Universal Links y completar la
-verificación extremo a extremo de OAuth.
+La APK debug es sólo demostrativa. Las builds release fallan sin un keystore
+real y se generan manualmente como APK/AAB mediante
+`.github/workflows/android-release.yml`; el workflow no publica en Play Store.
+El estado y los bloqueantes del piloto están en
+[`docs/tiago-readiness.md`](docs/tiago-readiness.md).
 
 ## Decisiones técnicas
 

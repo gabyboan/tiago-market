@@ -15,14 +15,20 @@ class PriceResult {
   const PriceResult({
     required this.storeName,
     required this.productName,
+    this.storeSlug,
     this.normalizedName = '',
+    this.branchId,
     this.branchName,
+    this.branchAddress,
     required this.price,
+    this.currency = 'MXN',
+    this.available = true,
     required this.capturedAt,
     this.source = 'direct',
     this.freshness = 'fresh',
     this.daysOld = 0,
     this.distanceKm,
+    this.observationUrl,
     this.storeProductUrl,
     this.imageUrl,
     this.presentation,
@@ -32,17 +38,23 @@ class PriceResult {
   factory PriceResult.fromJson(Map<String, dynamic> json) {
     return PriceResult(
       storeName: json['store_name'] as String? ?? 'Tienda',
+      storeSlug: json['store_slug'] as String?,
       productName: json['product_name'] as String? ?? 'Producto',
       normalizedName: json['normalized_name'] as String? ??
           json['product_name'] as String? ??
           'producto',
       branchName: json['branch_name'] as String?,
+      branchId: json['branch_id'] as String?,
+      branchAddress: json['branch_address'] as String?,
       price: (json['price'] as num?)?.toDouble() ?? 0,
+      currency: json['currency'] as String? ?? '',
+      available: json['available'] as bool? ?? false,
       source: json['source'] as String? ?? 'fuente no informada',
       capturedAt: json['captured_at'] as String? ?? '',
       freshness: json['freshness'] as String? ?? 'old',
       daysOld: (json['days_old'] as num?)?.toInt() ?? 0,
       distanceKm: (json['distance_km'] as num?)?.toDouble(),
+      observationUrl: json['observation_url'] as String?,
       storeProductUrl: json['store_product_url'] as String?,
       imageUrl: json['image_url'] as String?,
       presentation: json['presentation'] as String?,
@@ -52,15 +64,21 @@ class PriceResult {
 
   Map<String, dynamic> toJson() => {
         'store_name': storeName,
+        'store_slug': storeSlug,
         'product_name': productName,
         'normalized_name': normalizedName,
+        'branch_id': branchId,
         'branch_name': branchName,
+        'branch_address': branchAddress,
         'price': price,
+        'currency': currency,
+        'available': available,
         'source': source,
         'captured_at': capturedAt,
         'freshness': freshness,
         'days_old': daysOld,
         'distance_km': distanceKm,
+        'observation_url': observationUrl,
         'store_product_url': storeProductUrl,
         'image_url': imageUrl,
         'presentation': presentation,
@@ -68,15 +86,21 @@ class PriceResult {
       };
 
   final String storeName;
+  final String? storeSlug;
   final String productName;
   final String normalizedName;
+  final String? branchId;
   final String? branchName;
+  final String? branchAddress;
   final double price;
+  final String currency;
+  final bool available;
   final String source;
   final String capturedAt;
   final String freshness;
   final int daysOld;
   final double? distanceKm;
+  final String? observationUrl;
   final String? storeProductUrl;
   final String? imageUrl;
   final String? presentation;
@@ -107,7 +131,47 @@ class PriceResult {
     final age = daysOld == 1 ? 'hace 1 día' : 'hace $daysOld días';
     return 'Actualizado $age · fuente directa';
   }
+
+  String? pilotRejectionReason({
+    required bool requireBranch,
+    required DateTime now,
+  }) {
+    if (storeName.trim().isEmpty || productName.trim().isEmpty) {
+      return 'missing_product_or_store';
+    }
+    if (!price.isFinite || price <= 0) return 'invalid_price';
+    if (currency.trim().toUpperCase() != 'MXN') return 'invalid_currency';
+    if (!available) return 'unavailable';
+    if (source.trim().isEmpty) return 'missing_source';
+
+    final observedAt = DateTime.tryParse(capturedAt)?.toUtc();
+    final referenceTime = now.toUtc();
+    if (observedAt == null) return 'invalid_captured_at';
+    if (observedAt.isAfter(referenceTime.add(const Duration(minutes: 5)))) {
+      return 'future_observation';
+    }
+    if (freshness == 'old' ||
+        daysOld > 21 ||
+        observedAt.isBefore(referenceTime.subtract(const Duration(days: 21)))) {
+      return 'expired';
+    }
+
+    if (requireBranch) {
+      if (_isBlank(branchId)) return 'missing_branch_id';
+      if (_isBlank(branchName) || _isBlank(branchAddress)) {
+        return 'missing_branch_details';
+      }
+      return null;
+    }
+
+    if (_isBlank(storeProductUrl) && _isBlank(observationUrl)) {
+      return 'missing_online_evidence';
+    }
+    return null;
+  }
 }
+
+bool _isBlank(String? value) => value == null || value.trim().isEmpty;
 
 String? _normalizedPresentation(String value) {
   final normalized = value
@@ -318,7 +382,8 @@ class FavoriteItem {
         imageUrl: json['image_url'] as String?,
         presentation: json['presentation'] as String?,
         category: json['category'] as String?,
-        addedAt: json['added_at'] as String? ?? DateTime.now().toIso8601String(),
+        addedAt:
+            json['added_at'] as String? ?? DateTime.now().toIso8601String(),
       );
 
   final String comparisonKey;
