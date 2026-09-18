@@ -1,0 +1,3 @@
+-- Historical remote migration already applied in Supabase.
+-- The original SQL was not present in this local workspace when migrations
+-- were reintroduced, so this stub preserves the migration version for CLI sync.

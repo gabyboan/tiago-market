@@ -49,10 +49,28 @@ class SearchController extends ChangeNotifier {
   List<ProductCategory> categories = const [];
   String? selectedCategory;
   bool freshOnly = false;
+  String? _lastSubmittedQuery;
+  bool _categorySelectedAfterSearch = false;
 
   bool get hasLocation => latitude != null && longitude != null;
+  String get queryText => queryController.text.trim();
+
   String get emptyMessage {
-    if (localEmptyMessage != null && !showingOnlineFallback) {
+    final category = selectedCategory;
+    if (category != null && _categorySelectedAfterSearch) {
+      final query = queryText;
+      if (query.isNotEmpty) {
+        return 'No encontramos resultados para “$query” en $category. Probá con Todo.';
+      }
+    }
+    if (showingOnlineFallback) {
+      final query = queryText;
+      if (query.isNotEmpty) {
+        return 'No encontramos precios locales ni online para “$query”. Probá con otro producto.';
+      }
+      return 'No encontramos precios locales ni online. Probá con otro producto.';
+    }
+    if (localEmptyMessage != null) {
       return localEmptyMessage!;
     }
     return 'No encontramos precios para esa búsqueda.';
@@ -210,6 +228,9 @@ class SearchController extends ChangeNotifier {
     }
 
     final query = queryController.text.trim();
+    if (!append) {
+      _lastSubmittedQuery = query;
+    }
     final nextPage = append ? page + 1 : 1;
     final skipLocation = ignoreLocation || showingOnlineFallback;
     loadingMore = append;
@@ -247,6 +268,23 @@ class SearchController extends ChangeNotifier {
       loading = false;
       loadingMore = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> submitSearch({String? quickQuery}) async {
+    if (quickQuery != null) {
+      queryController.text = quickQuery;
+      _resetCategoryFilter();
+    } else {
+      final query = queryText;
+      if (!_sameQuery(query, _lastSubmittedQuery)) {
+        _resetCategoryFilter();
+      }
+    }
+    if (hasLocation) {
+      await searchWithLocationFallback();
+    } else {
+      await search();
     }
   }
 
@@ -308,15 +346,10 @@ class SearchController extends ChangeNotifier {
     if (!hasLocation || results.isNotEmpty || error != null) return;
 
     localEmptyMessage =
-        'Todavía no hay precios verificados por sucursal en esta zona.';
+        'Para esta búsqueda todavía no encontramos precios por sucursal cerca. Mostramos precios online cuando estén disponibles.';
 
     if (nearbyBranches <= 0) {
       error = 'Todavía no hay sucursales verificadas dentro de este radio.';
-      notifyListeners();
-      return;
-    }
-
-    if (!authEnabled && apiBaseUrl.isEmpty) {
       notifyListeners();
       return;
     }
@@ -341,11 +374,21 @@ class SearchController extends ChangeNotifier {
 
   void setCategory(String? category) {
     selectedCategory = category;
+    _categorySelectedAfterSearch = category != null;
     if (hasLocation) {
       unawaited(searchWithLocationFallback());
     } else {
       unawaited(search());
     }
+  }
+
+  bool _sameQuery(String query, String? previousQuery) {
+    return query.trim().toLowerCase() == previousQuery?.trim().toLowerCase();
+  }
+
+  void _resetCategoryFilter() {
+    selectedCategory = null;
+    _categorySelectedAfterSearch = false;
   }
 
   void setSortMode(String value) {

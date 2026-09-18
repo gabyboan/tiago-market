@@ -122,11 +122,11 @@ class _SearchInputRow extends StatelessWidget {
             trailing: [
               IconButton(
                 onPressed:
-                    controller.loading ? null : () => controller.search(),
+                    controller.loading ? null : () => controller.submitSearch(),
                 icon: const Icon(Icons.arrow_forward_rounded),
               ),
             ],
-            onSubmitted: (_) => controller.search(),
+            onSubmitted: (_) => controller.submitSearch(),
           ),
         ),
         const SizedBox(width: 8),
@@ -200,7 +200,7 @@ class _CategoryChips extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: ChoiceChip(
-                label: Text('${category.name} (${category.count})'),
+                label: Text(category.name),
                 selected: selectedCategory == category.name,
                 onSelected: (_) => onSelected(category.name),
               ),
@@ -244,7 +244,7 @@ class _SearchHistorySection extends StatelessWidget {
             for (final query in controller.searchHistory)
               ActionChip(
                 label: Text(query),
-                onPressed: () => controller.search(quickQuery: query),
+                onPressed: () => controller.submitSearch(quickQuery: query),
               ),
           ],
         ),
@@ -373,7 +373,7 @@ class _FavoritesSection extends StatelessWidget {
               final favorite = controller.favorites[index];
               return ActionChip(
                 label: Text(favorite.productName),
-                onPressed: () => controller.search(
+                onPressed: () => controller.submitSearch(
                   quickQuery: favorite.productName,
                 ),
               );
@@ -405,10 +405,11 @@ class _NoticeSection extends StatelessWidget {
         NoticeCard(icon: Icons.info_outline, text: controller.error!),
       );
     }
-    if (controller.showingOnlineFallback) {
-      notices.add(const NoticeCard(
+    if (controller.showingOnlineFallback && controller.results.isNotEmpty) {
+      notices.add(NoticeCard(
         icon: Icons.storefront_outlined,
-        text: 'Todavía no hay precios verificados por sucursal en esta zona.',
+        text: controller.localEmptyMessage ??
+            'Para esta búsqueda todavía no encontramos precios por sucursal cerca. Mostramos precios online cuando estén disponibles.',
       ));
       notices.add(const NoticeCard(
         icon: Icons.public_rounded,

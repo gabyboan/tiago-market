@@ -328,7 +328,7 @@ function registerApiRoutes(app: express.Express, database: Database) {
     sendSuccess(response, {
       status: "ok",
       service: "tiago-market-api",
-      version: "0.7.0",
+      version: "0.8.0",
       timestamp: new Date().toISOString(),
     });
   });

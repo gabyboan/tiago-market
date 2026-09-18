@@ -3,11 +3,19 @@
 Backend y fuente de datos para una futura aplicación Flutter de comparación de
 precios de tiendas en mexico
 
-## Etapa 0.7
+El [informe de estado y próximos caminos](docs/estado-y-caminos-2026-09-18.md) incluye la consolidación local y la evaluación de Uber Direct.
+
+## Etapa 0.8
 
 El prototipo implementa el flujo:
 
 `fuente -> snapshots auditables -> sucursales -> API geográfica -> Flutter`
+
+La prerelease 0.8 integra el cliente Flutter `0.2.1+3`; la rama de preparación
+del piloto avanza a `0.2.2+4`, endurece la ingesta idempotente, documenta el
+estado verificable de las fuentes y separa build debug de release firmado. El
+detalle histórico de lo validado, pendiente y no aplicado está en
+[`docs/release-audit-v0.8.0.md`](docs/release-audit-v0.8.0.md).
 
 La primera fuente real es la herramienta pública Quién es Quién en los Precios
 (QQP) de PROFECO. Sus precios son observaciones con fecha, fuente y sucursal;
@@ -51,6 +59,7 @@ GEOCODING_MIN_CONFIDENCE=0.8
 ```
 
 ### Configuración de Google Sign In y Supabase
+
 1. En Google Cloud Console, abre el proyecto correcto.
 2. Ve a `APIs y servicios` → `Biblioteca` y habilita `Google Identity Services`.
 3. Ve a `APIs y servicios` → `Credenciales` → `Crear credenciales` → `ID de cliente de OAuth`.
@@ -67,23 +76,11 @@ exponerse en la aplicación Flutter.
 
 ## Base de datos
 
-Vincular el proyecto y aplicar todas las migraciones:
+El historial local y el remoto necesitan reconciliación antes del próximo despliegue. No hay actualmente una secuencia completa validada para reconstruir una base vacía.
 
-```bash
-supabase login
-supabase link --project-ref <project-ref>
-supabase db push
-```
+El [SQL recuperado](supabase/recovered/2026-09-18/README.md) conserva migraciones históricas y una captura de esquema; incluye marcadores y definiciones solapadas. No ejecutar todos esos archivos ni aplicar `supabase db push` a ciegas.
 
-Como alternativa, las migraciones de `supabase/migrations/` se pueden ejecutar
-en orden desde el SQL Editor de Supabase.
-
-La migración crea tablas, índices, RLS y estas vistas:
-
-- `latest_prices`: último precio conocido por producto de tienda.
-- `compare_prices`: últimos precios disponibles, ordenables por `price_rank`.
-- `source_stats`: actividad y última observación por fuente.
-- `coverage_summary`: métricas reales de cobertura e histórico.
+La migración de contrato público v2 está en `apps/flutter_app/supabase/migrations/20260628055206_harden_public_price_contract.sql`. Revisar sus dependencias contra el esquema remoto y probarla antes de desplegar. El reporte de cobertura está en `apps/flutter_app/tools/ingestion/sql/source_coverage_report.sql`.
 
 Cada snapshot conserva `captured_at`, nombres originales de producto, tienda y
 sucursal, ciudad, referencia externa y `raw_payload` para auditoría.
@@ -195,11 +192,13 @@ de PROFECO de lunes a viernes y también puede ejecutarse manualmente desde
 GitHub Actions. Requiere los secretos `SUPABASE_URL` y
 `SUPABASE_SERVICE_ROLE_KEY`.
 
-## Demo Flutter
+## Aplicación Flutter
 
-La demo mínima está en `apps/flutter_app`. Consume exclusivamente la API y
-muestra precio, supermercado, sucursal, fuente, fecha relativa y freshness.
-Usa datos de ejemplo mientras la API no tenga una URL pública:
+La aplicación está en `apps/flutter_app`. Incluye onboarding, acceso invitado,
+Google Auth opcional mediante Supabase, búsqueda, categorías, ubicación,
+fallback explícito a precios online, favoritos y lista de compras persistente.
+También separa precios por sucursal de referencias online y muestra fuente,
+fecha y frescura de cada observación.
 
 ```bash
 cd apps/flutter_app
@@ -211,6 +210,20 @@ Para conectarla a la API desplegada:
 ```bash
 flutter run --dart-define=API_BASE_URL=https://api.example.com
 ```
+
+Para una build local configurada, usar un archivo ignorado por Git:
+
+```bash
+cd apps/flutter_app
+flutter build apk --debug \
+  --dart-define-from-file=dart_defines.local.json
+```
+
+La APK debug es sólo demostrativa. Las builds release fallan sin un keystore
+real y se generan manualmente como APK/AAB mediante
+`.github/workflows/android-release.yml`; el workflow no publica en Play Store.
+El estado y los bloqueantes del piloto están en
+[`docs/tiago-readiness.md`](docs/tiago-readiness.md).
 
 ## Decisiones técnicas
 

@@ -1,6 +1,5 @@
 import type express from "express";
 import { z } from "zod";
-import type { Database } from "@supabase/supabase-js";
 import { supabase } from "../db/supabase.js";
 import { env } from "../config/env.js";
 
@@ -29,7 +28,8 @@ type GoogleAuthInput = z.infer<typeof googleAuthSchema>;
 type SetRoleInput = z.infer<typeof setRoleSchema>;
 type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
-const GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo?id_token=";
+const GOOGLE_TOKENINFO_URL =
+  "https://oauth2.googleapis.com/tokeninfo?id_token=";
 
 interface GoogleIdTokenPayload {
   aud: string;
@@ -40,8 +40,12 @@ interface GoogleIdTokenPayload {
   sub: string;
 }
 
-async function verifyGoogleIdToken(idToken: string): Promise<GoogleIdTokenPayload> {
-  const response = await fetch(`${GOOGLE_TOKENINFO_URL}${encodeURIComponent(idToken)}`);
+async function verifyGoogleIdToken(
+  idToken: string,
+): Promise<GoogleIdTokenPayload> {
+  const response = await fetch(
+    `${GOOGLE_TOKENINFO_URL}${encodeURIComponent(idToken)}`,
+  );
   if (!response.ok) {
     throw new Error("ID token inválido o expirado.");
   }
@@ -59,45 +63,90 @@ async function verifyGoogleIdToken(idToken: string): Promise<GoogleIdTokenPayloa
   return payload;
 }
 
+async function findUserByEmail(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({
+      page,
+      perPage: 1000,
+    });
+    if (error) throw error;
+
+    const user = data.users.find(
+      (candidate) => candidate.email?.toLowerCase() === normalizedEmail,
+    );
+    if (user || data.users.length < 1000) return user ?? null;
+  }
+}
+
+async function requireAuthenticatedUserId(
+  request: express.Request,
+  response: express.Response,
+): Promise<string | null> {
+  const authorization = request.header("authorization")?.trim() ?? "";
+  const [scheme, token] = authorization.split(/\s+/, 2);
+  if (scheme?.toLowerCase() !== "bearer" || !token) {
+    sendAuthError(response, 401, "UNAUTHORIZED", "Bearer token requerido");
+    return null;
+  }
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) {
+    sendAuthError(response, 401, "UNAUTHORIZED", "Sesión inválida o expirada");
+    return null;
+  }
+
+  return data.user.id;
+}
+
 export async function authenticateGoogleUser(
   googleAuth: GoogleAuthInput,
-  request: express.Request,
-  response: express.Response
+  response: express.Response,
 ) {
   try {
     const payload = await verifyGoogleIdToken(googleAuth.idToken);
 
     if (payload.email !== googleAuth.email) {
-      return sendAuthError(response, 400, "EMAIL_MISMATCH", "El correo del token no coincide.");
+      return sendAuthError(
+        response,
+        400,
+        "EMAIL_MISMATCH",
+        "El correo del token no coincide.",
+      );
     }
 
-    const { data: existingUser, error: getUserError } = await supabase.auth.admin.getUserByEmail(
-      googleAuth.email,
-    );
+    const existingUser = await findUserByEmail(googleAuth.email);
 
     let userId: string;
     let isNewUser = false;
 
-    if (getUserError || !existingUser?.user) {
-      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-        email: googleAuth.email,
-        email_confirm: true,
-        user_metadata: {
-          name: googleAuth.name,
-          picture: googleAuth.picture,
-          provider: "google",
-          google_sub: payload.sub,
-        },
-      });
+    if (!existingUser) {
+      const { data: newUser, error: createError } =
+        await supabase.auth.admin.createUser({
+          email: googleAuth.email,
+          email_confirm: true,
+          user_metadata: {
+            name: googleAuth.name,
+            picture: googleAuth.picture,
+            provider: "google",
+            google_sub: payload.sub,
+          },
+        });
 
       if (createError || !newUser.user) {
-        return sendAuthError(response, 500, "USER_CREATION_FAILED", createError?.message);
+        return sendAuthError(
+          response,
+          500,
+          "USER_CREATION_FAILED",
+          createError?.message ?? "No se pudo crear el usuario",
+        );
       }
 
       userId = newUser.user.id;
       isNewUser = true;
     } else {
-      userId = existingUser.user.id;
+      userId = existingUser.id;
     }
 
     const { error: profileError } = await supabase.from("user_profiles").upsert(
@@ -114,7 +163,12 @@ export async function authenticateGoogleUser(
     );
 
     if (profileError) {
-      return sendAuthError(response, 500, "PROFILE_CREATION_FAILED", profileError.message);
+      return sendAuthError(
+        response,
+        500,
+        "PROFILE_CREATION_FAILED",
+        profileError.message,
+      );
     }
 
     const { data: profileRow, error: profileRowError } = await supabase
@@ -124,7 +178,12 @@ export async function authenticateGoogleUser(
       .single();
 
     if (profileRowError) {
-      return sendAuthError(response, 500, "PROFILE_READ_FAILED", profileRowError.message);
+      return sendAuthError(
+        response,
+        500,
+        "PROFILE_READ_FAILED",
+        profileRowError.message,
+      );
     }
 
     sendSuccess(response, {
@@ -146,14 +205,16 @@ export async function authenticateGoogleUser(
 export async function setUserRole(
   userId: string,
   roleData: SetRoleInput,
-  request: express.Request,
-  response: express.Response
+  response: express.Response,
 ) {
   try {
-    const { error } = await supabase.from("user_profiles").update({
-      role: roleData.role,
-      role_set_at: new Date().toISOString(),
-    }).eq("id", userId);
+    const { error } = await supabase
+      .from("user_profiles")
+      .update({
+        role: roleData.role,
+        role_set_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
 
     if (error) {
       return sendAuthError(response, 500, "ROLE_UPDATE_FAILED", error.message);
@@ -171,8 +232,7 @@ export async function setUserRole(
 
 export async function getUserProfile(
   userId: string,
-  request: express.Request,
-  response: express.Response
+  response: express.Response,
 ) {
   try {
     const { data: profile, error } = await supabase
@@ -196,8 +256,7 @@ export async function getUserProfile(
 export async function updateUserProfile(
   userId: string,
   profileData: UpdateProfileInput,
-  request: express.Request,
-  response: express.Response
+  response: express.Response,
 ) {
   try {
     const updateData: Record<string, unknown> = {
@@ -207,7 +266,8 @@ export async function updateUserProfile(
     if (profileData.name) updateData.name = profileData.name;
     if (profileData.phone) updateData.phone = profileData.phone;
     if (profileData.store_name) updateData.store_name = profileData.store_name;
-    if (profileData.store_location) updateData.store_location = profileData.store_location;
+    if (profileData.store_location)
+      updateData.store_location = profileData.store_location;
 
     const { error } = await supabase
       .from("user_profiles")
@@ -215,7 +275,12 @@ export async function updateUserProfile(
       .eq("id", userId);
 
     if (error) {
-      return sendAuthError(response, 500, "PROFILE_UPDATE_FAILED", error.message);
+      return sendAuthError(
+        response,
+        500,
+        "PROFILE_UPDATE_FAILED",
+        error.message,
+      );
     }
 
     sendSuccess(response, {
@@ -228,7 +293,11 @@ export async function updateUserProfile(
 }
 
 // Utilidades
-function sendSuccess(response: express.Response, data: unknown, meta?: unknown) {
+function sendSuccess(
+  response: express.Response,
+  data: unknown,
+  meta?: Record<string, unknown>,
+) {
   response.status(200).json({
     success: true,
     data,
@@ -240,7 +309,7 @@ function sendAuthError(
   response: express.Response,
   status: number,
   code: string,
-  message: string
+  message: string,
 ) {
   response.status(status).json({
     success: false,
@@ -256,14 +325,14 @@ export function registerAuthRoutes(app: express.Express) {
   app.post("/api/v1/auth/login/google", async (request, response) => {
     try {
       const body = googleAuthSchema.parse(request.body);
-      await authenticateGoogleUser(body, request, response);
+      await authenticateGoogleUser(body, response);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return sendAuthError(
           response,
           400,
           "VALIDATION_ERROR",
-          error.errors[0]?.message || "Datos inválidos"
+          error.errors[0]?.message || "Datos inválidos",
         );
       }
       sendAuthError(response, 500, "AUTH_ERROR", String(error));
@@ -273,20 +342,18 @@ export function registerAuthRoutes(app: express.Express) {
   // POST /api/v1/auth/role
   app.post("/api/v1/auth/role", async (request, response) => {
     try {
-      const userId = request.headers["x-user-id"] as string;
-      if (!userId) {
-        return sendAuthError(response, 401, "UNAUTHORIZED", "User ID requerido");
-      }
+      const userId = await requireAuthenticatedUserId(request, response);
+      if (!userId) return;
 
       const body = setRoleSchema.parse(request.body);
-      await setUserRole(userId, body, request, response);
+      await setUserRole(userId, body, response);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return sendAuthError(
           response,
           400,
           "VALIDATION_ERROR",
-          error.errors[0]?.message || "Datos inválidos"
+          error.errors[0]?.message || "Datos inválidos",
         );
       }
       sendAuthError(response, 500, "ROLE_ERROR", String(error));
@@ -296,12 +363,10 @@ export function registerAuthRoutes(app: express.Express) {
   // GET /api/v1/auth/profile
   app.get("/api/v1/auth/profile", async (request, response) => {
     try {
-      const userId = request.headers["x-user-id"] as string;
-      if (!userId) {
-        return sendAuthError(response, 401, "UNAUTHORIZED", "User ID requerido");
-      }
+      const userId = await requireAuthenticatedUserId(request, response);
+      if (!userId) return;
 
-      await getUserProfile(userId, request, response);
+      await getUserProfile(userId, response);
     } catch (error) {
       sendAuthError(response, 500, "PROFILE_ERROR", String(error));
     }
@@ -310,20 +375,18 @@ export function registerAuthRoutes(app: express.Express) {
   // PATCH /api/v1/auth/profile
   app.patch("/api/v1/auth/profile", async (request, response) => {
     try {
-      const userId = request.headers["x-user-id"] as string;
-      if (!userId) {
-        return sendAuthError(response, 401, "UNAUTHORIZED", "User ID requerido");
-      }
+      const userId = await requireAuthenticatedUserId(request, response);
+      if (!userId) return;
 
       const body = updateProfileSchema.parse(request.body);
-      await updateUserProfile(userId, body, request, response);
+      await updateUserProfile(userId, body, response);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return sendAuthError(
           response,
           400,
           "VALIDATION_ERROR",
-          error.errors[0]?.message || "Datos inválidos"
+          error.errors[0]?.message || "Datos inválidos",
         );
       }
       sendAuthError(response, 500, "UPDATE_ERROR", String(error));

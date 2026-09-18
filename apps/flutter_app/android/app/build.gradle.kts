@@ -1,10 +1,11 @@
 import java.io.FileInputStream
 import java.util.Properties
+import org.gradle.api.GradleException
 
 plugins {
     id("com.android.application")
-    id("com.google.firebase.crashlytics")
-    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics") apply false
+    id("com.google.gms.google-services") apply false
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
@@ -12,8 +13,24 @@ plugins {
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
-if (keystorePropertiesFile.exists()) {
+val hasReleaseKeystore = keystorePropertiesFile.exists()
+val hasGoogleServicesConfig = file("google-services.json").isFile
+val requestedReleaseBuild = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true)
+}
+if (hasReleaseKeystore) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
+if (requestedReleaseBuild && !hasReleaseKeystore) {
+    throw GradleException(
+        "Release builds require android/key.properties and a production keystore.",
+    )
+}
+
+if (hasGoogleServicesConfig) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
 }
 
 android {
@@ -42,7 +59,7 @@ android {
     }
 
     signingConfigs {
-        if (keystorePropertiesFile.exists()) {
+        if (hasReleaseKeystore) {
             create("release") {
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
@@ -54,7 +71,7 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
+            signingConfig = if (hasReleaseKeystore) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")

@@ -69,7 +69,10 @@ void main() {
     await tester.tap(find.byType(ExpansionTile));
     await tester.pumpAndSettle();
 
-    expect(find.text('Precio publicado online'), findsOneWidget);
+    expect(
+      find.text('Precios online, no verificados para una sucursal cercana.'),
+      findsOneWidget,
+    );
     expect(find.textContaining('\$2.00'), findsNWidgets(2));
   });
 

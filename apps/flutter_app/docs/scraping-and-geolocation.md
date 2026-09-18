@@ -179,6 +179,11 @@ Conectores exploratorios implementados:
   `ingestion.source_price_staging` como `pending` solo si trae sucursal y
   coordenadas mexicanas.
 
+La operación V1 repetible está documentada en
+[`data-ingestion-v1-runbook.md`](data-ingestion-v1-runbook.md). La evaluación
+de la siguiente cadena está en
+[`second-chain-evaluation.md`](second-chain-evaluation.md).
+
 ### Hallazgo validado: The Home Depot Mexico
 
 Home Depot Mexico es el primer conector nuevo apto para la experiencia principal

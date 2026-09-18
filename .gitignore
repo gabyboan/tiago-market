@@ -8,3 +8,6 @@ supabase/.temp/
 playwright-report/
 test-results/
 *.log
+
+# Private recovery archives, local configuration and conversations
+/.local-rescue/

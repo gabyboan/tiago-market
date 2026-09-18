@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Tiago Market</title>
+  <rect width="512" height="512" rx="112" fill="#006C51"/>
+  <path d="M177 211c10-51 42-81 79-81s69 30 79 81" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="28"/>
+  <path d="M132 211h248l-28 139c-4 20-22 34-42 34H202c-20 0-38-14-42-34l-28-139Z" fill="#fff"/>
+  <path d="M201 260v65M256 260v65M311 260v65" fill="none" stroke="#006C51" stroke-linecap="round" stroke-width="20"/>
+</svg>

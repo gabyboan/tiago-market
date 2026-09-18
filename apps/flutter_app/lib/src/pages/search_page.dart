@@ -86,6 +86,8 @@ class SearchPageBody extends StatelessWidget {
     final controller = context.watch<local.SearchController>();
     final filteredResults = controller.filteredResults;
     final groups = controller.groupedResults;
+    final hasEmptyError =
+        controller.error != null && controller.results.isEmpty;
 
     return Scaffold(
       appBar: _SearchAppBar(
@@ -112,7 +114,8 @@ class SearchPageBody extends StatelessWidget {
                 const SizedBox(height: 14),
                 _QuickSearchChips(
                   loading: controller.loading,
-                  onSelected: (query) => controller.search(quickQuery: query),
+                  onSelected: (query) =>
+                      controller.submitSearch(quickQuery: query),
                 ),
                 const SizedBox(height: 16),
                 _CategoryChips(
@@ -136,13 +139,15 @@ class SearchPageBody extends StatelessWidget {
                 ],
                 const SizedBox(height: 22),
                 _NoticeSection(controller: controller),
-                const SizedBox(height: 22),
-                _ResultsHeader(
-                  groupsCount: groups.length,
-                  pricesCount: filteredResults.length,
-                ),
-                const SizedBox(height: 12),
-                _SearchResults(controller: controller, groups: groups),
+                if (!hasEmptyError) ...[
+                  const SizedBox(height: 22),
+                  _ResultsHeader(
+                    groupsCount: groups.length,
+                    pricesCount: filteredResults.length,
+                  ),
+                  const SizedBox(height: 12),
+                  _SearchResults(controller: controller, groups: groups),
+                ],
               ],
             ),
           ),

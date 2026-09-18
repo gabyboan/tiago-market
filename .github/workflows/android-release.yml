@@ -1,0 +1,124 @@
+name: Build signed Android release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-pilot-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    defaults:
+      run:
+        working-directory: apps/flutter_app
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.7"
+          channel: stable
+          cache: true
+
+      - name: Validate required release secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          test -n "$ANDROID_STORE_PASSWORD"
+          test -n "$GOOGLE_SERVICES_JSON_BASE64"
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_PUBLISHABLE_KEY"
+
+      - name: Materialize ephemeral release configuration
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
+          {
+            printf 'storePassword=%s\n' "$ANDROID_STORE_PASSWORD"
+            printf 'keyPassword=%s\n' "$ANDROID_KEY_PASSWORD"
+            printf 'keyAlias=%s\n' "$ANDROID_KEY_ALIAS"
+            printf 'storeFile=%s\n' "$GITHUB_WORKSPACE/apps/flutter_app/android/app/upload-keystore.jks"
+          } > android/key.properties
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const values = {
+              SUPABASE_URL: process.env.SUPABASE_URL,
+              SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY,
+              API_BASE_URL: process.env.API_BASE_URL || "",
+              GOOGLE_WEB_CLIENT_ID: process.env.GOOGLE_WEB_CLIENT_ID || "",
+              SENTRY_DSN: process.env.SENTRY_DSN || "",
+              APP_ENV: "pilot",
+            };
+            fs.writeFileSync(`${process.env.RUNNER_TEMP}/dart-defines.json`, JSON.stringify(values));
+          '
+
+      - name: Validate Flutter project
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+
+      - name: Build signed APK and AAB
+        run: |
+          flutter build apk --release --dart-define-from-file="$RUNNER_TEMP/dart-defines.json"
+          flutter build appbundle --release --dart-define-from-file="$RUNNER_TEMP/dart-defines.json"
+
+      - name: Verify signatures
+        run: |
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          test -x "$APKSIGNER"
+          "$APKSIGNER" verify --verbose build/app/outputs/flutter-apk/app-release.apk
+          jarsigner -verify build/app/outputs/bundle/release/app-release.aab
+          sha256sum \
+            build/app/outputs/flutter-apk/app-release.apk \
+            build/app/outputs/bundle/release/app-release.aab \
+            > build/app/outputs/android-release-sha256.txt
+
+      - name: Upload signed artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiago-market-android-${{ github.run_number }}
+          path: |
+            apps/flutter_app/build/app/outputs/flutter-apk/app-release.apk
+            apps/flutter_app/build/app/outputs/bundle/release/app-release.aab
+            apps/flutter_app/build/app/outputs/android-release-sha256.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove ephemeral credentials
+        if: always()
+        run: |
+          rm -f android/key.properties
+          rm -f android/app/upload-keystore.jks
+          rm -f android/app/google-services.json
+          rm -f "$RUNNER_TEMP/dart-defines.json"

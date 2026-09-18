@@ -130,7 +130,7 @@ void main() {
     expect(controller.results, contains(onlineResult));
     expect(controller.showingOnlineFallback, isTrue);
     expect(controller.nearbyBranches, 3);
-    expect(controller.error, contains('precios online'));
+    expect(controller.error, isNull);
   });
 
   test('guarda historial de busqueda y borra historial', () async {

@@ -9,6 +9,14 @@ Demo mínima del cliente Flutter. Incluye:
 - datos demo solo para la interfaz cuando no se configura una API pública.
 - inicio de sesión opcional con Google mediante Supabase Auth.
 
+## Estado de la versión 0.2.2+4
+
+- Rechaza precios sin evidencia, sucursal, disponibilidad o frescura válidas.
+- Separa claramente el fallback de precios online de los precios por sucursal.
+- Incluye íconos de Tiago Market en Android, iOS y web.
+- La APK de desarrollo puede instalarse localmente; una build release requiere
+  un keystore de piloto y nunca usa la firma debug como sustituto.
+
 ## Ejecutar demo
 
 ```bash
