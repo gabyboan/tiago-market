@@ -3,6 +3,8 @@
 Backend y fuente de datos para una futura aplicación Flutter de comparación de
 precios de tiendas en mexico
 
+El [informe de estado y próximos caminos](docs/estado-y-caminos-2026-09-18.md) incluye la consolidación local y la evaluación de Uber Direct.
+
 ## Etapa 0.8
 
 El prototipo implementa el flujo:
@@ -74,23 +76,11 @@ exponerse en la aplicación Flutter.
 
 ## Base de datos
 
-Vincular el proyecto y aplicar todas las migraciones:
+El historial local y el remoto necesitan reconciliación antes del próximo despliegue. No hay actualmente una secuencia completa validada para reconstruir una base vacía.
 
-```bash
-supabase login
-supabase link --project-ref <project-ref>
-supabase db push
-```
+El [SQL recuperado](supabase/recovered/2026-09-18/README.md) conserva migraciones históricas y una captura de esquema; incluye marcadores y definiciones solapadas. No ejecutar todos esos archivos ni aplicar `supabase db push` a ciegas.
 
-Como alternativa, las migraciones de `supabase/migrations/` se pueden ejecutar
-en orden desde el SQL Editor de Supabase.
-
-La migración crea tablas, índices, RLS y estas vistas:
-
-- `latest_prices`: último precio conocido por producto de tienda.
-- `compare_prices`: últimos precios disponibles, ordenables por `price_rank`.
-- `source_stats`: actividad y última observación por fuente.
-- `coverage_summary`: métricas reales de cobertura e histórico.
+La migración de contrato público v2 está en `apps/flutter_app/supabase/migrations/20260628055206_harden_public_price_contract.sql`. Revisar sus dependencias contra el esquema remoto y probarla antes de desplegar. El reporte de cobertura está en `apps/flutter_app/tools/ingestion/sql/source_coverage_report.sql`.
 
 Cada snapshot conserva `captured_at`, nombres originales de producto, tienda y
 sucursal, ciudad, referencia externa y `raw_payload` para auditoría.
