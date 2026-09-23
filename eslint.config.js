@@ -8,7 +8,7 @@ export default tseslint.config(
       ".agents/**",
       ".codex/**",
       "apps/flutter_app/**",
-      "dist/**",
+      "**/dist/**",
       "node_modules/**",
     ],
   },

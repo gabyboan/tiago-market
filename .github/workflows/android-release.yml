@@ -39,6 +39,8 @@ jobs:
           GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
         run: |
           test -n "$ANDROID_KEYSTORE_BASE64"
           test -n "$ANDROID_KEY_ALIAS"
@@ -47,6 +49,8 @@ jobs:
           test -n "$GOOGLE_SERVICES_JSON_BASE64"
           test -n "$SUPABASE_URL"
           test -n "$SUPABASE_PUBLISHABLE_KEY"
+          test -n "$API_BASE_URL"
+          test -n "$GOOGLE_WEB_CLIENT_ID"
 
       - name: Materialize ephemeral release configuration
         env:
@@ -78,6 +82,7 @@ jobs:
               GOOGLE_WEB_CLIENT_ID: process.env.GOOGLE_WEB_CLIENT_ID || "",
               SENTRY_DSN: process.env.SENTRY_DSN || "",
               APP_ENV: "pilot",
+              CRASHLYTICS_ENABLED: true,
             };
             fs.writeFileSync(`${process.env.RUNNER_TEMP}/dart-defines.json`, JSON.stringify(values));
           '
@@ -87,10 +92,11 @@ jobs:
           flutter pub get
           flutter analyze
           flutter test
+          python3 -m unittest discover -s tools -p 'test_release_config.py'
 
       - name: Build signed APK and AAB
         run: |
-          flutter build apk --release --dart-define-from-file="$RUNNER_TEMP/dart-defines.json"
+          python3 tools/build_android_release.py --defines "$RUNNER_TEMP/dart-defines.json"
           flutter build appbundle --release --dart-define-from-file="$RUNNER_TEMP/dart-defines.json"
 
       - name: Verify signatures

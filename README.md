@@ -1,15 +1,21 @@
 # Tiago Market Prototype
 
-Backend y fuente de datos para una futura aplicación Flutter de comparación de
-precios de tiendas en mexico
-
-El [informe de estado y próximos caminos](docs/estado-y-caminos-2026-09-18.md) incluye la consolidación local y la evaluación de Uber Direct.
+Aplicación Flutter existente para comparar precios en México, con Supabase e
+ingesta externa. Ver el [estado comprobado al 22/09/2026](docs/estado-2026-09-22.md)
+y el [resultado de la validación Chedraui](docs/chedraui-validation-2026-09-22.md).
+La próxima entrega se limita a validar una fuente de supermercado por sucursal
+en CDMX; el preflight Chedraui quedó bloqueado por autorización de reutilización
+no confirmada. No hay cobertura vigente de supermercados por sucursal.
 
 ## Etapa 0.8
 
 El prototipo implementa el flujo:
 
-`fuente -> snapshots auditables -> sucursales -> API geográfica -> Flutter`
+`fuente -> evidencia/NDJSON -> staging -> snapshots por sucursal -> RPC Supabase -> Flutter`
+
+Flutter también usa Supabase Auth. La Edge Function `api` atiende categorías y
+feedback con la configuración local; el backend Node de este repositorio tiene
+rutas distintas. La Edge Function desplegada todavía no está recuperada en Git.
 
 La prerelease 0.8 integra el cliente Flutter `0.2.1+3`; la rama de preparación
 del piloto avanza a `0.2.2+4`, endurece la ingesta idempotente, documenta el
@@ -17,11 +23,11 @@ estado verificable de las fuentes y separa build debug de release firmado. El
 detalle histórico de lo validado, pendiente y no aplicado está en
 [`docs/release-audit-v0.8.0.md`](docs/release-audit-v0.8.0.md).
 
-La primera fuente real es la herramienta pública Quién es Quién en los Precios
-(QQP) de PROFECO. Sus precios son observaciones con fecha, fuente y sucursal;
-pueden variar y no representan precios consultados en tiempo real. Los scrapers
-directos de Walmart y Soriana permanecen desactivados hasta validar una fuente
-legal y técnicamente estable.
+La fuente reciente comprobada en Supabase es Home Depot: 18 observaciones del
+21/09/2026, seis productos y tres sucursales. No es cobertura de supermercados.
+Los datos de Chedraui y otras cadenas son online, de junio y sin sucursal.
+PROFECO fue una fuente histórica; sus últimas seis ejecuciones consultadas
+fallaron. Walmart y Soriana conservan scrapers incompletos.
 
 ## Requisitos
 
@@ -80,10 +86,20 @@ El historial local y el remoto necesitan reconciliación antes del próximo desp
 
 El [SQL recuperado](supabase/recovered/2026-09-18/README.md) conserva migraciones históricas y una captura de esquema; incluye marcadores y definiciones solapadas. No ejecutar todos esos archivos ni aplicar `supabase db push` a ciegas.
 
-La migración de contrato público v2 está en `apps/flutter_app/supabase/migrations/20260628055206_harden_public_price_contract.sql`. Revisar sus dependencias contra el esquema remoto y probarla antes de desplegar. El reporte de cobertura está en `apps/flutter_app/tools/ingestion/sql/source_coverage_report.sql`.
+El remoto enlazado registra 26 migraciones, incluidas `20260921121843`
+(idempotencia), `20260921122029` (publicación por sucursal y contrato v2) y
+`20260923104615` (separación online/local y RPC v3). Las RPC v3 y la columna
+`price_scope` ya están desplegadas. La migración local `20260628055206` no está
+aplicada en remoto y no debe ejecutarse automáticamente: pertenece a una
+secuencia histórica anterior que aún necesita reconciliación.
+El reporte de cobertura está en `apps/flutter_app/tools/ingestion/sql/source_coverage_report.sql`.
 
 Cada snapshot conserva `captured_at`, nombres originales de producto, tienda y
 sucursal, ciudad, referencia externa y `raw_payload` para auditoría.
+
+Las imágenes no se descargan ni se almacenan como archivos en Supabase. Sólo se
+conserva la URL original de la imagen y metadatos mínimos en `product_images`;
+la aplicación la carga desde su CDN de origen cuando está disponible.
 
 Las sucursales se normalizan en `branches` con domicilio estructurado y
 coordenadas opcionales. PROFECO QQP no entrega latitud/longitud: deben
@@ -98,7 +114,11 @@ RLS queda habilitado sin políticas públicas. Los roles `anon` y `authenticated
 no reciben acceso directo; la API usa `service_role` exclusivamente desde el
 backend.
 
-## Uso
+## Uso del backend histórico
+
+Los siguientes jobs escriben datos y no forman parte del preflight actual.
+Su presencia no demuestra que la fuente opere hoy; no ejecutarlos sobre el
+proyecto remoto como prueba de conectividad.
 
 Cargar precios falsos realistas:
 
@@ -187,10 +207,11 @@ costos o llamadas accidentales.
 
 ## Automatización
 
-El workflow `.github/workflows/update-profeco-prices.yml` actualiza los precios
-de PROFECO de lunes a viernes y también puede ejecutarse manualmente desde
-GitHub Actions. Requiere los secretos `SUPABASE_URL` y
-`SUPABASE_SERVICE_ROLE_KEY`.
+El workflow `.github/workflows/update-profeco-prices.yml` está programado de
+lunes a viernes, pero las últimas seis ejecuciones consultadas fallaron. No hay
+actualización automática exitosa comprobada para las fuentes directas. Requiere
+los secretos `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`; programarlo no acredita
+frescura de datos.
 
 ## Aplicación Flutter
 
@@ -202,14 +223,14 @@ fecha y frescura de cada observación.
 
 ```bash
 cd apps/flutter_app
-flutter run -d chrome
+flutter run -d chrome --dart-define-from-file=dart_defines.local.json
 ```
 
-Para conectarla a la API desplegada:
-
-```bash
-flutter run --dart-define=API_BASE_URL=https://api.example.com
-```
+El archivo local ignorado debe incluir `SUPABASE_URL`,
+`SUPABASE_PUBLISHABLE_KEY` y `API_BASE_URL`; esta última apunta al servicio HTTP
+(por ejemplo, `https://<ref>.supabase.co/functions/v1/api`). Los precios cercanos
+requieren Supabase configurado aunque se use acceso invitado. Sin configuración
+no se garantiza una demo con datos: puede aparecer “API no configurada”.
 
 Para una build local configurada, usar un archivo ignorado por Git:
 
@@ -220,8 +241,11 @@ flutter build apk --debug \
 ```
 
 La APK debug es sólo demostrativa. Las builds release fallan sin un keystore
-real y se generan manualmente como APK/AAB mediante
-`.github/workflows/android-release.yml`; el workflow no publica en Play Store.
+real y configuración Firebase. Para una APK local con `dart-define` y Crashlytics,
+seguir [la guía de release Android](apps/flutter_app/README.md#apk-release-local).
+El workflow `.github/workflows/android-release.yml` genera APK/AAB sin publicar
+en Play Store. La entrega local 0.2.3+5 está documentada en
+[el informe del 23/09/2026](docs/android-local-release-2026-09-23.md).
 El estado y los bloqueantes del piloto están en
 [`docs/tiago-readiness.md`](docs/tiago-readiness.md).
 
@@ -236,17 +260,18 @@ El estado y los bloqueantes del piloto están en
 - La ubicación del usuario se usa solo para la consulta y no se persiste.
 - Las búsquedas geográficas excluyen sucursales todavía no geocodificadas.
 - Las búsquedas geográficas excluyen coordenadas pendientes de revisión.
-- `observation_url` enlaza a la consulta pública PROFECO.
+- `observation_url` debería conservar la evidencia de observación; en el lote
+  actual devuelve un SKU, defecto pendiente. El raw payload conserva la URL oficial.
 - `store_product_url` solo se devuelve cuando una fuente directa proporciona una
   ficha oficial verificable. PROFECO no entrega esos enlaces de tienda.
 - Los productos internos se relacionan por `normalized_name`.
 - Los listados externos se identifican por URL y, si falta, por nombre externo.
 - Cada listado registra su fuente (`mock`, `profeco` o `direct`).
 - Las tiendas mock quedan deshabilitadas para no mezclarlas con precios reales.
-- Flutter será el único cliente de usuario y consumirá exclusivamente la API.
-- La aplicación Flutter no accederá directamente a Supabase ni ejecutará
-  scraping.
-- La API pública usa contrato versionado, paginación y límites por IP.
+- Flutter consulta precios mediante RPC públicas de Supabase, usa Auth y consume
+  HTTP para servicios auxiliares; no ejecuta scraping ni lee tablas protegidas.
+- La API Node tiene paginación y límites por IP. No asumir que esas protecciones
+  existen también en la Edge Function desplegada o las RPC.
 
 ## Limitaciones
 

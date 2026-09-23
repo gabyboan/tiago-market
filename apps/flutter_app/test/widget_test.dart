@@ -3,30 +3,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tiago_market_app/src/app.dart';
 import 'package:tiago_market_app/src/models/models.dart';
 import 'package:tiago_market_app/src/pages/search_page.dart';
+import 'package:tiago_market_app/src/pages/welcome_page.dart';
 import 'package:tiago_market_app/src/widgets/product_comparison_card.dart';
 import 'package:tiago_market_app/src/widgets/shopping_list_sheet.dart';
 import 'package:tiago_market_app/src/widgets/session_loading_page.dart';
 
 void main() {
-  testWidgets('muestra bienvenida antes de iniciar sesión', (tester) async {
+  testWidgets('ofrece Google y acceso invitado antes de abrir el catálogo',
+      (tester) async {
     await tester.pumpWidget(const TiagoMarketApp());
     await tester.pumpAndSettle();
-
-    expect(find.text('Tu compra merece\nun mejor precio.'), findsOneWidget);
-    expect(find.textContaining('Tiago Market compara precios'), findsOneWidget);
+    expect(find.byType(WelcomePage), findsOneWidget);
+    expect(find.text('Continuar con Google'), findsOneWidget);
     expect(find.text('Continuar sin cuenta'), findsOneWidget);
-    expect(find.text('Mejores precios'), findsNothing);
-    expect(find.text('BODEGA AURRERA'), findsNothing);
-  });
-
-  testWidgets('permite continuar sin cuenta', (tester) async {
-    await tester.pumpWidget(const TiagoMarketApp());
-    await tester.pumpAndSettle();
+    expect(find.byType(SearchPage), findsNothing);
 
     await tester.tap(find.text('Continuar sin cuenta'));
     await tester.pumpAndSettle();
-
     expect(find.byType(SearchPage), findsOneWidget);
+    expect(find.text('Buscar por ubicación'), findsOneWidget);
+    expect(find.textContaining('Catálogo online'), findsOneWidget);
+    expect(find.text('Continuar sin cuenta'), findsNothing);
   });
 
   testWidgets('muestra ingreso breve al restaurar una cuenta', (tester) async {

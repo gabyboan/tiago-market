@@ -28,6 +28,20 @@ void main() {
         ]),
       );
     });
+
+    test('accepts online records without assigning a branch', () {
+      final record = validRecord()
+        ..['price_scope'] = 'online'
+        ..['branch_external_key'] = null
+        ..['branch_name'] = null
+        ..['branch_address'] = null
+        ..['branch_municipality'] = null
+        ..['branch_state'] = null
+        ..['latitude'] = null
+        ..['longitude'] = null;
+
+      expect(stage.validateRecords([record]), isEmpty);
+    });
   });
 
   group('buildStageSql', () {
@@ -53,6 +67,25 @@ void main() {
         sql,
         contains('distinct on (store_product_id, branch_id, captured_at)'),
       );
+    });
+
+    test('publishes online records with an explicit online scope', () {
+      final record = validRecord()
+        ..['price_scope'] = 'online'
+        ..['branch_external_key'] = null
+        ..['branch_name'] = null
+        ..['branch_address'] = null
+        ..['branch_municipality'] = null
+        ..['branch_state'] = null
+        ..['latitude'] = null
+        ..['longitude'] = null;
+
+      final sql = stage.buildStageSql([record], runSource: 'chedraui-mx');
+
+      expect(sql, contains("'price_scope', coalesce"));
+      expect(sql, contains("normalized_payload->>'price_scope' = 'online'"));
+      expect(sql, contains('c.price_scope'));
+      expect(sql, contains('on conflict do nothing'));
     });
   });
 
@@ -95,33 +128,35 @@ void main() {
 }
 
 Map<String, dynamic> validRecord() => {
-  'source': 'chedraui-mx',
-  'store_brand': 'Chedraui',
-  'store_slug': 'chedraui-mx',
-  'source_product_name': 'Croissant  Novia',
-  'normalized_name': 'croissant novia',
-  'category': 'Panaderia',
-  'presentation': '1 pieza',
-  'currency': 'MXN',
-  'captured_at': '2026-06-19T00:00:00Z',
-  'observed_at': '2026-06-19T00:00:00Z',
-  'source_url': 'https://www.chedraui.com.mx/croissant-novia-3106012/p',
-  'evidence_kind': 'product_page',
-  'store_product_url': 'https://www.chedraui.com.mx/croissant-novia-3106012/p',
-  'content_hash': '6d15b287d67fcc6d',
-  'price': 26.0,
-  'confidence_score': 0.9,
-  'is_synthetic': false,
-  'review_status': 'accepted',
-  'available': true,
-  'branch_external_key': 'chedraui-sucursal-123',
-  'branch_name': 'Chedraui Centro',
-  'branch_address': 'Av. Ejemplo 123',
-  'branch_municipality': 'Cuauhtemoc',
-  'branch_state': 'Ciudad de Mexico',
-  'latitude': 19.4326,
-  'longitude': -99.1332,
-  'external_reference': '3106012',
-  'image_url': null,
-  'raw_payload': {'source': 'test'},
-};
+      'source': 'chedraui-mx',
+      'store_brand': 'Chedraui',
+      'store_slug': 'chedraui-mx',
+      'source_product_name': 'Croissant  Novia',
+      'normalized_name': 'croissant novia',
+      'category': 'Panaderia',
+      'presentation': '1 pieza',
+      'currency': 'MXN',
+      'captured_at': DateTime.now().toUtc().toIso8601String(),
+      'observed_at': DateTime.now().toUtc().toIso8601String(),
+      'source_url': 'https://www.chedraui.com.mx/croissant-novia-3106012/p',
+      'evidence_kind': 'product_page',
+      'store_product_url':
+          'https://www.chedraui.com.mx/croissant-novia-3106012/p',
+      'content_hash': '6d15b287d67fcc6d',
+      'price': 26.0,
+      'confidence_score': 0.9,
+      'is_synthetic': false,
+      'review_status': 'accepted',
+      'available': true,
+      'branch_external_key':
+          'chedraui-sucursal-123', // gitleaks:allow -- fixture branch ID, not a credential
+      'branch_name': 'Chedraui Centro',
+      'branch_address': 'Av. Ejemplo 123',
+      'branch_municipality': 'Cuauhtemoc',
+      'branch_state': 'Ciudad de Mexico',
+      'latitude': 19.4326,
+      'longitude': -99.1332,
+      'external_reference': '3106012',
+      'image_url': null,
+      'raw_payload': {'source': 'test'},
+    };

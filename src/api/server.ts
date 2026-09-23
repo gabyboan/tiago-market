@@ -181,41 +181,74 @@ async function fetchPriceRows(
   query: PriceQuery,
 ) {
   if (query.lat !== undefined && query.lng !== undefined) {
-    const [from, to] = rangeFor(query);
+    if (query.source || query.store) {
+      const [from, to] = rangeFor(query);
+      return database
+        .rpc("nearby_prices", {
+          search_query: query.query!,
+          user_latitude: query.lat,
+          user_longitude: query.lng,
+          radius_km: query.radius_km,
+          source_filter: query.source ?? null,
+          store_filter: query.store ?? null,
+          only_available: query.available !== "false",
+        })
+        .order(query.order_by === "distance" ? "distance_km" : "price", {
+          ascending: true,
+        })
+        .range(from, to);
+    }
+
     return database
-      .rpc("nearby_prices", {
+      .rpc("nearby_prices_v4", {
         search_query: query.query!,
         user_latitude: query.lat,
         user_longitude: query.lng,
         radius_km: query.radius_km,
-        source_filter: query.source ?? null,
-        store_filter: query.store ?? null,
+        limit_count: query.limit,
+        page_number: query.page,
+        category_filter: null,
         only_available: query.available !== "false",
-      })
-      .order(query.order_by === "distance" ? "distance_km" : "price", {
-        ascending: true,
-      })
-      .range(from, to);
+        sort_order: query.order_by === "distance" ? "distance" : "price_asc",
+      });
   }
 
-  let databaseQuery = database
-    .from(table)
-    .select(table === "compare_prices" ? COMPARE_COLUMNS : PRICE_COLUMNS, {
-      count: "exact",
-    });
+  if (query.source || query.store) {
+    let databaseQuery = database
+      .from(table)
+      .select(table === "compare_prices" ? COMPARE_COLUMNS : PRICE_COLUMNS, {
+        count: "exact",
+      });
 
-  if (query.query) {
-    databaseQuery = databaseQuery.ilike("normalized_name", `%${query.query}%`);
+    if (query.query) {
+      databaseQuery = databaseQuery.ilike(
+        "normalized_name",
+        `%${query.query}%`,
+      );
+    }
+
+    if (query.store) databaseQuery = databaseQuery.eq("store_slug", query.store);
+    if (query.source) databaseQuery = databaseQuery.eq("source", query.source);
+    if (query.available) {
+      databaseQuery = databaseQuery.eq(
+        "available",
+        query.available === "true",
+      );
+    }
+
+    const [from, to] = rangeFor(query);
+    return databaseQuery.order("price", { ascending: true }).range(from, to);
   }
 
-  if (query.store) databaseQuery = databaseQuery.eq("store_slug", query.store);
-  if (query.source) databaseQuery = databaseQuery.eq("source", query.source);
-  if (query.available) {
-    databaseQuery = databaseQuery.eq("available", query.available === "true");
-  }
+  return database.rpc("online_prices_v4", {
+    search_query: query.query ?? null,
+    limit_count: query.limit,
+    page_number: query.page,
+    category_filter: null,
+    only_available: query.available !== "false",
+    sort_order: "price_asc",
+  });
 
-  const [from, to] = rangeFor(query);
-  return databaseQuery.order("price", { ascending: true }).range(from, to);
 }
 
 function priceFilters(query: PriceQuery): Record<string, string | boolean> {

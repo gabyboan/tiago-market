@@ -12,6 +12,7 @@ class PrivacyDialog extends StatelessWidget {
           'Usamos tu cuenta de Google para identificar tu sesión. '
           'Tu ubicación solo se solicita cuando eliges buscar tiendas cercanas '
           'y se envía para calcular distancias. No vendemos tus datos. '
+          'En Android, las versiones release envían diagnósticos de fallos a Firebase Crashlytics para mejorar la estabilidad. '
           'Los precios son observaciones de tiendas y pueden cambiar.',
         ),
       ),

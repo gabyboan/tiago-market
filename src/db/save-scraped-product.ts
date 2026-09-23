@@ -18,6 +18,7 @@ export function snapshotRecord(
     price: product.price,
     currency: product.currency,
     available: product.available,
+    price_scope: branchId === null ? "online" : "branch_local",
     scraped_at: product.scrapedAt,
     captured_at: product.scrapedAt,
     source: product.source,
@@ -34,6 +35,9 @@ export function snapshotRecord(
 export async function saveScrapedProduct(
   product: ScrapedProduct,
 ): Promise<void> {
+  const normalizedProductName =
+    product.canonicalVariantKey ?? product.normalizedName;
+
   const { data: store, error: storeError } = await supabase
     .from("stores")
     .upsert(
@@ -80,7 +84,22 @@ export async function saveScrapedProduct(
     .upsert(
       {
         name: product.internalProductName,
-        normalized_name: product.normalizedName,
+        normalized_name: normalizedProductName,
+        ...(product.brand !== undefined ? { brand: product.brand } : {}),
+        ...(product.gtin !== undefined ? { gtin: product.gtin } : {}),
+        ...(product.variantLabel !== undefined
+          ? { variant_label: product.variantLabel }
+          : {}),
+        ...(product.netQuantity !== undefined
+          ? { net_quantity: product.netQuantity }
+          : {}),
+        ...(product.unit !== undefined ? { unit: product.unit } : {}),
+        ...(product.packCount !== undefined
+          ? { pack_count: product.packCount }
+          : {}),
+        ...(product.canonicalVariantKey !== undefined
+          ? { canonical_variant_key: product.canonicalVariantKey }
+          : {}),
         category: product.category,
       },
       { onConflict: "normalized_name" },
@@ -152,5 +171,21 @@ export async function saveScrapedProduct(
         ignoreDuplicates: true,
       });
     assertNoError(error, "No se pudo guardar el precio");
+  }
+
+  if (product.imageUrl && storeProductId) {
+    const { error } = await supabase.from("product_images").upsert(
+      {
+        store_product_id: storeProductId,
+        image_url: product.imageUrl,
+        canonical_url: product.imageUrl,
+        source: product.source,
+        is_primary: true,
+        validation_status: "unverified",
+        checked_at: product.scrapedAt,
+      },
+      { onConflict: "store_product_id,image_url", ignoreDuplicates: true },
+    );
+    assertNoError(error, "No se pudo guardar la imagen del producto");
   }
 }

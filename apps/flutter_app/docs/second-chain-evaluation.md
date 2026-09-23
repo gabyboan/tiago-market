@@ -1,5 +1,7 @@
 # Evaluación de la segunda cadena local
 
+> **Actualización 22/09/2026:** un nuevo preflight Chedraui quedó bloqueado por autorización de reutilización no confirmada. No se consultaron sesiones ni productos; el 429 de abajo sigue siendo evidencia de junio. Ver [informe y artefactos actuales](../../../docs/chedraui-validation-2026-09-22.md).
+
 ## Conclusión
 
 El experimento mínimo de Chedraui México del **24 de junio de 2026** quedó

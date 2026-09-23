@@ -1,0 +1,38 @@
+{
+  "classification": "blocked",
+  "publication_ready": false,
+  "generated_by": "manual_preflight_review_not_dart_probe",
+  "date": "2026-09-22",
+  "block_reason": "commercial_reuse_authorization_not_confirmed",
+  "direct_capture_requests": 2,
+  "discovery_and_corroboration": "Official terms page also located and read through web search; not counted as direct capture requests.",
+  "sku": "3061483",
+  "product_url": "https://www.chedraui.com.mx/refresco-coca-cola-original-1l-3061483/p",
+  "branches": [
+    {
+      "external_key": "chedraui-mx:013",
+      "name": "Chedraui México Buen Tono",
+      "status": "not_attempted",
+      "identity_currently_verified": false
+    },
+    {
+      "external_key": "chedraui-mx:016",
+      "name": "Chedraui México Ánfora",
+      "status": "not_attempted",
+      "identity_currently_verified": false
+    }
+  ],
+  "local_observations": 0,
+  "repeat_observation": "not_applicable_dependency_not_met",
+  "guardrails": {
+    "product_requests": 0,
+    "session_requests": 0,
+    "ndjson_emitted": false,
+    "imports_executed": false,
+    "supabase_writes": false,
+    "checkout_called": false,
+    "credentials_used": false,
+    "cookies_persisted": false
+  },
+  "next_requirement": "Written authorization or official API/feed permitting branch-specific price and availability reuse with channel, scope and frequency defined."
+}

@@ -18,25 +18,28 @@ Future<void> main() async {
     try {
       await Firebase.initializeApp();
       crashlytics = FirebaseCrashlytics.instance;
-      await crashlytics.setCrashlyticsCollectionEnabled(!kDebugMode);
+      await crashlytics.setCrashlyticsCollectionEnabled(
+        kReleaseMode && crashlyticsEnabled,
+      );
+      await crashlytics.setCustomKey('environment', appEnvironment);
     } catch (error, stack) {
       debugPrint('Firebase initialization failed: $error\n$stack');
     }
   }
 
-  FlutterError.onError = (details) {
-    FlutterError.presentError(details);
-    debugPrint('FlutterError: ${details.exceptionAsString()}');
-    crashlytics?.recordFlutterFatalError(details);
-  };
-
-  PlatformDispatcher.instance.onError = (error, stack) {
-    debugPrint('Unhandled error: $error\n$stack');
-    crashlytics?.recordError(error, stack, fatal: true);
-    return true;
-  };
-
   Future<void> startApp() async {
+    // Install after Sentry initialization so both reporters keep their handlers.
+    final previousFlutterHandler = FlutterError.onError;
+    final previousPlatformHandler = PlatformDispatcher.instance.onError;
+    FlutterError.onError = (details) {
+      previousFlutterHandler?.call(details);
+      crashlytics?.recordFlutterFatalError(details);
+    };
+    PlatformDispatcher.instance.onError = (error, stack) {
+      final previouslyHandled = previousPlatformHandler?.call(error, stack);
+      crashlytics?.recordError(error, stack, fatal: true);
+      return crashlytics != null || (previouslyHandled ?? false);
+    };
     if (authEnabled) {
       await Supabase.initialize(
         url: supabaseUrl,
@@ -53,10 +56,7 @@ Future<void> main() async {
       (options) {
         options.dsn = sentryDsn;
         options.tracesSampleRate = 0.15;
-        options.environment = const String.fromEnvironment(
-          'APP_ENV',
-          defaultValue: 'production',
-        );
+        options.environment = appEnvironment;
       },
       appRunner: startApp,
     );

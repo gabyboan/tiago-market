@@ -42,7 +42,7 @@ class ComparisonFilters extends StatelessWidget {
             ),
             const DropdownMenuEntry(
               value: 'stores_desc',
-              label: 'Mas tiendas',
+              label: 'Más tiendas (cargadas)',
               leadingIcon: Icon(Icons.storefront_rounded),
             ),
             const DropdownMenuEntry(

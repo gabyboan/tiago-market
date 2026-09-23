@@ -1,0 +1,17 @@
+{
+  "requested_url": "https://www.chedraui.com.mx/terminos-y-condiciones/plataformas-digitales",
+  "final_url": "https://www.chedraui.com.mx/terminos-y-condiciones/plataformas-digitales",
+  "status_code": 200,
+  "captured_at": "2026-09-22T11:21:29.634641+00:00",
+  "headers": {
+    "Content-Type": "text/html; charset=utf-8",
+    "Date": "Tue, 22 Sep 2026 11:21:28 GMT",
+    "Cache-Control": "public, max-age=617, s-maxage=60, stale-while-revalidate=1200, stale-if-error=3600"
+  },
+  "body_sha256": "19755df39ecf7266ad16fc3dbd4c770e53776f6f99891fe6b92929f8660f766c",
+  "body_bytes": 2151268,
+  "request_count": 1,
+  "cookies_persisted": false,
+  "credentials_used": false,
+  "body_retained": false
+}

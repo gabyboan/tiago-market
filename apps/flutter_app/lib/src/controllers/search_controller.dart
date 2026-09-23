@@ -10,13 +10,14 @@ import 'package:tiago_market_app/src/services/favorite_storage.dart';
 import 'package:tiago_market_app/src/services/search_history_storage.dart';
 
 class SearchController extends ChangeNotifier {
-  SearchController({MarketApi? api}) : _api = api ?? MarketApi() {
+  SearchController({MarketApi? api, bool? loadOnStart})
+      : _api = api ?? MarketApi() {
     _attachScrollListener();
     _loadShoppingList();
     _loadFavorites();
     _loadSearchHistory();
     _loadCategories();
-    if (apiBaseUrl.isNotEmpty) {
+    if (loadOnStart ?? (apiBaseUrl.isNotEmpty || authEnabled)) {
       Future.microtask(search);
     }
   }
@@ -31,7 +32,6 @@ class SearchController extends ChangeNotifier {
   bool loadingMore = false;
   bool usingDemo = false;
   bool usingCache = false;
-  bool showingOnlineFallback = false;
   bool locating = false;
   double? latitude;
   double? longitude;
@@ -51,6 +51,13 @@ class SearchController extends ChangeNotifier {
   bool freshOnly = false;
   String? _lastSubmittedQuery;
   bool _categorySelectedAfterSearch = false;
+  int _requestId = 0;
+  bool _disposed = false;
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
 
   bool get hasLocation => latitude != null && longitude != null;
   String get queryText => queryController.text.trim();
@@ -63,17 +70,12 @@ class SearchController extends ChangeNotifier {
         return 'No encontramos resultados para “$query” en $category. Probá con Todo.';
       }
     }
-    if (showingOnlineFallback) {
-      final query = queryText;
-      if (query.isNotEmpty) {
-        return 'No encontramos precios locales ni online para “$query”. Probá con otro producto.';
-      }
-      return 'No encontramos precios locales ni online. Probá con otro producto.';
-    }
     if (localEmptyMessage != null) {
       return localEmptyMessage!;
     }
-    return 'No encontramos precios para esa búsqueda.';
+    return hasLocation
+        ? 'No hay precios vigentes de sucursales verificadas en esta zona. Podés consultar el catálogo online por separado.'
+        : 'No hay precios online vigentes para esta búsqueda. Probá otro producto o categoría.';
   }
 
   List<PriceResult> get filteredResults {
@@ -104,7 +106,18 @@ class SearchController extends ChangeNotifier {
 
   Future<void> _loadCategories() async {
     try {
-      final loaded = await _api.categories();
+      final localLatitude = latitude;
+      final localLongitude = longitude;
+      final localRadius = radiusKm;
+      final loaded = await _api.categories(
+          latitude: localLatitude,
+          longitude: localLongitude,
+          radiusKm: localRadius);
+      if (localLatitude != latitude ||
+          localLongitude != longitude ||
+          localRadius != radiusKm) {
+        return;
+      }
       categories = loaded;
       notifyListeners();
     } catch (_) {
@@ -216,14 +229,13 @@ class SearchController extends ChangeNotifier {
   Future<void> search({
     String? quickQuery,
     bool append = false,
-    bool ignoreLocation = false,
   }) async {
-    if (append && loading) return;
+    if (append && (loading || loadingMore || !hasMore)) return;
+    final requestId = ++_requestId;
     if (quickQuery != null) {
       queryController.text = quickQuery;
     }
-    if (!append && !ignoreLocation) {
-      showingOnlineFallback = false;
+    if (!append) {
       localEmptyMessage = null;
     }
 
@@ -232,7 +244,7 @@ class SearchController extends ChangeNotifier {
       _lastSubmittedQuery = query;
     }
     final nextPage = append ? page + 1 : 1;
-    final skipLocation = ignoreLocation || showingOnlineFallback;
+    if (!append) results = [];
     loadingMore = append;
     loading = !append;
     error = null;
@@ -245,19 +257,26 @@ class SearchController extends ChangeNotifier {
     try {
       final results = await _api.compare(
         query,
-        latitude: skipLocation ? null : latitude,
-        longitude: skipLocation ? null : longitude,
+        latitude: latitude,
+        longitude: longitude,
         radiusKm: radiusKm,
-        orderBy: orderBy,
+        orderBy: sortMode,
         page: nextPage,
         category: selectedCategory,
       );
-      this.results = append ? [...this.results, ...results] : results;
+      if (_disposed || requestId != _requestId) return;
+      final unique = <String, PriceResult>{
+        if (append)
+          for (final row in this.results) row.identityKey: row,
+        for (final row in results) row.identityKey: row,
+      };
+      this.results = unique.values.toList();
       page = nextPage;
       hasMore = results.length == 100;
-      usingDemo = apiBaseUrl.isEmpty && !authEnabled;
+      usingDemo = false;
       usingCache = _api.usedCache;
     } catch (exception) {
+      if (_disposed || requestId != _requestId) return;
       if (!append) {
         results = [];
       }
@@ -265,9 +284,11 @@ class SearchController extends ChangeNotifier {
       usingCache = false;
       error = exception.toString().replaceFirst('Exception: ', '');
     } finally {
-      loading = false;
-      loadingMore = false;
-      notifyListeners();
+      if (!_disposed && requestId == _requestId) {
+        loading = false;
+        loadingMore = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -282,7 +303,7 @@ class SearchController extends ChangeNotifier {
       }
     }
     if (hasLocation) {
-      await searchWithLocationFallback();
+      await searchNearby();
     } else {
       await search();
     }
@@ -291,7 +312,6 @@ class SearchController extends ChangeNotifier {
   Future<void> useLocation() async {
     locating = true;
     error = null;
-    showingOnlineFallback = false;
     notifyListeners();
 
     try {
@@ -311,9 +331,11 @@ class SearchController extends ChangeNotifier {
       final position = await Geolocator.getCurrentPosition();
       latitude = position.latitude;
       longitude = position.longitude;
+      selectedCategory = null;
+      categories = [];
       orderBy = 'distance';
       sortMode = 'distance';
-      await searchWithLocationFallback();
+      await searchNearby();
     } catch (error) {
       this.error = error.toString().replaceFirst('Exception: ', '');
     } finally {
@@ -322,42 +344,10 @@ class SearchController extends ChangeNotifier {
     }
   }
 
-  Future<void> searchWithLocationFallback() async {
-    showingOnlineFallback = false;
+  Future<void> searchNearby() async {
     localEmptyMessage = null;
-    if (!hasLocation) {
-      await search();
-      return;
-    }
-
-    try {
-      nearbyBranches = await _api.nearbyBranchCount(
-        latitude!,
-        longitude!,
-        radiusKm,
-      );
-    } catch (exception) {
-      error = exception.toString().replaceFirst('Exception: ', '');
-      notifyListeners();
-      return;
-    }
-
+    unawaited(_loadCategories());
     await search();
-    if (!hasLocation || results.isNotEmpty || error != null) return;
-
-    localEmptyMessage =
-        'Para esta búsqueda todavía no encontramos precios por sucursal cerca. Mostramos precios online cuando estén disponibles.';
-
-    if (nearbyBranches <= 0) {
-      error = 'Todavía no hay sucursales verificadas dentro de este radio.';
-      notifyListeners();
-      return;
-    }
-
-    showingOnlineFallback = true;
-    await search(ignoreLocation: true);
-    localEmptyMessage = null;
-    notifyListeners();
   }
 
   void clearLocation() {
@@ -366,8 +356,10 @@ class SearchController extends ChangeNotifier {
     orderBy = 'price';
     if (sortMode == 'distance') sortMode = 'price_asc';
     nearbyBranches = 0;
-    showingOnlineFallback = false;
     localEmptyMessage = null;
+    selectedCategory = null;
+    categories = [];
+    unawaited(_loadCategories());
     search();
     notifyListeners();
   }
@@ -376,7 +368,7 @@ class SearchController extends ChangeNotifier {
     selectedCategory = category;
     _categorySelectedAfterSearch = category != null;
     if (hasLocation) {
-      unawaited(searchWithLocationFallback());
+      unawaited(searchNearby());
     } else {
       unawaited(search());
     }
@@ -395,7 +387,7 @@ class SearchController extends ChangeNotifier {
     sortMode = value;
     orderBy = value == 'distance' ? 'distance' : 'price';
     notifyListeners();
-    if (value == 'distance') unawaited(searchWithLocationFallback());
+    unawaited(search());
   }
 
   void setFreshOnly(bool value) {
@@ -451,6 +443,8 @@ class SearchController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
+    _requestId++;
     queryController.dispose();
     scrollController.dispose();
     super.dispose();

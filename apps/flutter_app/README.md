@@ -1,19 +1,25 @@
 # Tiago Market Flutter
 
+Estado vigente: [diagnóstico del 22/09/2026](../../docs/estado-2026-09-22.md).
+Chedraui: [preflight bloqueado y evidencia](../../docs/chedraui-validation-2026-09-22.md).
+
 Demo mínima del cliente Flutter. Incluye:
 
 - búsqueda de productos;
 - accesos rápidos;
 - comparación ordenada por precio;
 - cadena, sucursal, fuente y fecha de observación;
-- datos demo solo para la interfaz cuando no se configura una API pública.
+- requiere configuración de Supabase para precios cercanos; sin configuración puede mostrar “API no configurada”.
 - inicio de sesión opcional con Google mediante Supabase Auth.
 
-## Estado de la versión 0.2.2+4
+## Estado de la versión 0.2.3+5
 
-- Rechaza precios sin evidencia, sucursal, disponibilidad o frescura válidas.
+- Filtra precios por sucursal, disponibilidad y frescura; la exigencia de URL
+  de evidencia local y la revalidación de favoritos/lista siguen incompletas.
 - Separa claramente el fallback de precios online de los precios por sucursal.
 - Incluye íconos de Tiago Market en Android, iOS y web.
+- Unifica el ícono de instalación con la canasta de la esquina superior izquierda.
+- La release Android incorpora los `dart-define` locales y Firebase Crashlytics.
 - La APK de desarrollo puede instalarse localmente; una build release requiere
   un keystore de piloto y nunca usa la firma debug como sustituto.
 
@@ -21,8 +27,46 @@ Demo mínima del cliente Flutter. Incluye:
 
 ```bash
 flutter pub get
-flutter run -d chrome
+flutter run -d chrome --dart-define-from-file=dart_defines.local.json
 ```
+
+## APK release local
+
+Preparar `android/key.properties` con una clave propia de Tiago y el archivo
+`android/app/google-services.json` correspondiente al paquete Android. Ambos
+archivos y el keystore quedan fuera de Git. Conservar una copia privada de la
+clave y sus contraseñas: las futuras actualizaciones deben usar la misma firma.
+
+```bash
+cp config/dart_defines.release.example.json dart_defines.release.local.json
+# Completar con la configuración pública del proyecto.
+python3 tools/build_android_release.py --check-only
+python3 tools/build_android_release.py
+```
+
+El resultado es `build/app/outputs/flutter-apk/app-release.apk`. El script exige
+URLs HTTPS, claves públicas y Crashlytics activo; rechaza variables desconocidas
+y claves privilegiadas. `dart-define` se puede extraer de la APK: no es un lugar
+para secretos. `APP_ENV=pilot` identifica esta versión en los diagnósticos.
+
+Crashlytics se activa sólo en release Android mediante `CRASHLYTICS_ENABLED=true`.
+Firebase recibe los errores de Flutter y los errores asíncronos no capturados;
+los handlers conservan la integración opcional con Sentry. Referencia:
+[configuración oficial de Crashlytics](https://firebase.google.com/docs/crashlytics/flutter/get-started).
+La recepción del primer informe se debe comprobar en un dispositivo y en Firebase.
+
+El login nativo de Google requiere registrar las huellas SHA-1/SHA-256 de la
+firma release en Firebase/Google Cloud y actualizar `google-services.json`.
+Una instalación anterior firmada con debug no puede actualizarse con esta firma;
+desinstalarla borra sus datos locales. No hacerlo sin guardar listas y favoritos.
+
+Para regenerar los íconos desde el mismo glifo Material de la cabecera:
+
+```bash
+uv run --with fonttools --with cairosvg --with pillow tools/generate_brand_icons.py
+```
+
+Los SVG y la licencia de Material Icons están en `assets/branding/`.
 
 ## Mantenimiento de dependencias
 
@@ -63,27 +107,23 @@ flutter test test/widget_test.dart test/search_controller_test.dart
 - El botón de continuar como invitado usa la ruta nombrada `AppRoutes.search`.
 - Las rutas principales están definidas en `lib/src/navigation/app_routes.dart`.
 
-## Elegir un precio de venta
-
-Para justificar precio o presupuesto de venta:
-
-- Muestra el flujo completo de onboarding y auth con Supabase.
-- Destaca la búsqueda y comparación de precios, junto con la lista de compras persistente.
-- Señala que ya hay pruebas unitarias y rutas nombradas en el proyecto.
-- Si lo vendés como MVP, apunta a un rango de precio basado en horas de desarrollo + integración Supabase/API.
-
 ## Conectar API
 
 ```bash
 flutter run -d chrome \
-  --dart-define=API_BASE_URL=https://api.example.com
+  --dart-define=SUPABASE_URL=https://<ref>.supabase.co \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=<public-publishable-key> \
+  --dart-define=API_BASE_URL=https://<ref>.supabase.co/functions/v1/api
 ```
 
-La URL no debe terminar en `/`. Flutter consultará
-`/api/v1/compare?query=...`.
+Con Supabase configurado, los precios se consultan por `nearby_prices_v4` y
+`online_prices_v4`, que incluyen metadatos estructurados de variante y conteo
+de imágenes. El conteo de sucursales usa `nearby_branches`.
+`API_BASE_URL` se usa para categorías y feedback. El fallback HTTP online
+no tiene una ruta equivalente en la Edge Function actual (404).
 
 La aplicación nunca debe incluir claves secretas de Supabase ni ejecutar
-scraping. Para Supabase Auth sí usa una clave pública `publishable`; no consulta
+scraping. Para Auth y RPC usa una clave pública `publishable`; no consulta
 directamente las tablas de precios.
 
 ## Scraping y geolocalización
@@ -97,14 +137,18 @@ observación, evidencia, confianza, sucursal y coordenadas mexicanas. Los precio
 puramente online no se publican en la experiencia principal; quedarán para una
 sección separada más adelante.
 
+Las fotos siguen la misma política de bajo almacenamiento: sólo se guarda la
+dirección URL proporcionada por la tienda. No se descargan imágenes ni se usa
+Supabase Storage para copiarlas.
+
 Primer conector geolocalizable validado: The Home Depot Mexico, mediante
 `tools/ingestion/bin/home_depot_mx_scraper.dart`. El scraper enlaza precio y
 stock a sucursales oficiales del locator antes de generar NDJSON.
 
 ## Login con Google
 
-La configuración concreta del proyecto actual está documentada en
-[`../../docs/google-oauth-setup.md`](../../docs/google-oauth-setup.md).
+La guía `docs/google-oauth-setup.md` referenciada anteriormente no está en este
+checkout. El login real en dispositivo sigue pendiente de verificación.
 
 1. En Google Cloud, crea un cliente OAuth Web y agrega como URI de redirección:
    `https://<project-ref>.supabase.co/auth/v1/callback`.

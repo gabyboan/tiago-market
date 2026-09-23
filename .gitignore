@@ -1,6 +1,21 @@
 node_modules/
 dist/
 .env
+.env.*
+!.env.example
+!.env.template
+**/dart_defines*.json
+!**/dart_defines*.example.json
+**/__pycache__/
+**/*.pyc
+**/key.properties
+**/google-services.json
+**/GoogleService-Info.plist
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pfx
+**/*.pem
 .agents/
 .codex/
 skills-lock.json
@@ -11,3 +26,6 @@ test-results/
 
 # Private recovery archives, local configuration and conversations
 /.local-rescue/
+
+# Client conversations, payment attachments and delivery artifacts
+/docs/cliente/

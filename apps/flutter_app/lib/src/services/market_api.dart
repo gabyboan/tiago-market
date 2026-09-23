@@ -7,7 +7,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tiago_market_app/src/config.dart';
 import 'package:tiago_market_app/src/models/models.dart';
 
+typedef RpcInvoker = Future<List<dynamic>> Function(
+    String name, Map<String, dynamic> params);
+
 class MarketApi {
+  MarketApi({RpcInvoker? rpcInvoker}) : _rpcInvoker = rpcInvoker;
+  final RpcInvoker? _rpcInvoker;
+  bool get _hasRpc => authEnabled || _rpcInvoker != null;
+
   bool usedCache = false;
 
   Future<List<PriceResult>> compare(
@@ -25,26 +32,32 @@ class MarketApi {
         latitude: latitude,
         longitude: longitude,
         radiusKm: radiusKm,
+        page: page,
+        category: category,
+        orderBy: orderBy,
       );
     }
 
-    return onlinePrices(query, page: page, category: category);
+    return onlinePrices(query,
+        page: page, category: category, orderBy: orderBy);
   }
 
   Future<List<PriceResult>> onlinePrices(
     String query, {
     int page = 1,
     String? category,
+    String orderBy = 'price_asc',
   }) async {
-    if (authEnabled) {
-      return _onlinePricesFromSupabase(query, page: page, category: category);
+    if (_hasRpc) {
+      return _onlinePricesFromSupabase(query,
+          page: page, category: category, orderBy: orderBy);
     }
 
     if (apiBaseUrl.isEmpty) {
       throw Exception('API no configurada');
     }
 
-    final uri = Uri.parse('$apiBaseUrl/api/v1/online-prices').replace(
+    final uri = _apiUri('online-prices').replace(
       queryParameters: {
         'limit': '100',
         'page': page.toString(),
@@ -90,20 +103,27 @@ class MarketApi {
     required double latitude,
     required double longitude,
     required double radiusKm,
+    required int page,
+    String? category,
+    required String orderBy,
   }) async {
-    if (!authEnabled) {
+    if (!_hasRpc) {
       throw Exception(
         'Supabase no configurado. Agrega SUPABASE_URL y SUPABASE_PUBLISHABLE_KEY para buscar precios cercanos.',
       );
     }
 
     final response = await _rpcList(
-      'nearby_prices_v2',
+      'nearby_prices_v4',
       params: {
         'search_query': query.trim(),
         'user_latitude': latitude,
         'user_longitude': longitude,
         'radius_km': radiusKm,
+        'limit_count': 100,
+        'page_number': page,
+        'category_filter': category,
+        'sort_order': orderBy,
         'only_available': true,
       },
     );
@@ -120,14 +140,16 @@ class MarketApi {
     String query, {
     required int page,
     String? category,
+    required String orderBy,
   }) async {
     final response = await _rpcList(
-      'online_prices_v2',
+      'online_prices_v4',
       params: {
         'search_query': query.trim(),
         'limit_count': 100,
         'page_number': page,
         'category_filter': category,
+        'sort_order': orderBy,
         'only_available': true,
       },
     );
@@ -140,10 +162,21 @@ class MarketApi {
     );
   }
 
-  Future<List<ProductCategory>> categories() async {
+  Future<List<ProductCategory>> categories(
+      {double? latitude, double? longitude, double radiusKm = 10}) async {
+    if (_hasRpc) {
+      final rows = await _rpcList('catalog_categories_v3', params: {
+        'user_latitude': latitude,
+        'user_longitude': longitude,
+        'radius_km': radiusKm,
+      });
+      return rows
+          .map((row) => ProductCategory.fromJson(row as Map<String, dynamic>))
+          .toList();
+    }
     if (apiBaseUrl.isEmpty) return const [];
     final response = await http
-        .get(Uri.parse('$apiBaseUrl/api/v1/categories'))
+        .get(_apiUri('categories'))
         .timeout(const Duration(seconds: 10));
     if (response.statusCode != 200) {
       throw Exception('API respondió ${response.statusCode}');
@@ -180,7 +213,7 @@ class MarketApi {
     double longitude,
     double radiusKm,
   ) async {
-    if (!authEnabled) {
+    if (!_hasRpc) {
       throw Exception(
         'Supabase no configurado. Agrega SUPABASE_URL y SUPABASE_PUBLISHABLE_KEY para buscar sucursales cercanas.',
       );
@@ -201,6 +234,7 @@ class MarketApi {
     String functionName, {
     required Map<String, dynamic> params,
   }) async {
+    if (_rpcInvoker != null) return _rpcInvoker(functionName, params);
     try {
       final response = await Supabase.instance.client
           .rpc(functionName, params: params)
@@ -228,5 +262,11 @@ class MarketApi {
               null,
         )
         .toList();
+  }
+
+  Uri _apiUri(String endpoint) {
+    final base = apiBaseUrl.replaceFirst(RegExp(r'/$'), '');
+    final prefix = base.endsWith('/api') ? '$base/v1' : '$base/api/v1';
+    return Uri.parse('$prefix/$endpoint');
   }
 }

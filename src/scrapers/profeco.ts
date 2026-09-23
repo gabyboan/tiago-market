@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { env } from "../config/env.js";
 import type { ProductMeta } from "../products/products-test.js";
+import { parseProductVariant } from "../products/variant.js";
 import type { ScrapedProduct, ScraperResult } from "./types.js";
 
 const PROFECO_API_URL = "https://qqp.profeco.gob.mx/api/precios";
@@ -142,6 +143,7 @@ export function toProfecoScrapedProduct(
   productMeta: ProductMeta,
   apiSearchTerm: string,
 ): ScrapedProduct {
+  const variant = parseProductVariant(price.producto);
   const externalUrl = buildExternalUrl(
     env.PROFECO_CITY_CODE,
     apiSearchTerm,
@@ -169,6 +171,11 @@ export function toProfecoScrapedProduct(
     searchTerm,
     internalProductName: productMeta.internalName,
     normalizedName: productMeta.normalizedName,
+    variantLabel: variant.variantLabel,
+    netQuantity: variant.netQuantity,
+    unit: variant.unit,
+    packCount: variant.packCount,
+    canonicalVariantKey: variant.canonicalVariantKey,
     category: productMeta.category,
     externalName: `${price.producto} · ${price.establecimiento}`,
     price: price.precio,

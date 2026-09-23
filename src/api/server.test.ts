@@ -146,8 +146,23 @@ const tables: Record<string, Row[]> = {
 async function withApi(run: (baseUrl: string) => Promise<void>) {
   const database = {
     from: (table: string) => new FakeQuery(tables[table] ?? []),
-    rpc: (name: string) =>
-      new FakeQuery(name === "nearby_prices" ? priceRows : []),
+    rpc: (name: string, params?: { sort_order?: string }) => {
+      if (!name.includes("prices_v4") && name !== "nearby_prices") {
+        return new FakeQuery([]);
+      }
+      const rows = [...priceRows].sort((left, right) => {
+        const leftValue =
+          params?.sort_order === "distance"
+            ? Number(left.distance_km)
+            : Number(left.price);
+        const rightValue =
+          params?.sort_order === "distance"
+            ? Number(right.distance_km)
+            : Number(right.price);
+        return leftValue - rightValue;
+      });
+      return new FakeQuery(rows);
+    },
   } as unknown as Parameters<typeof createApi>[0];
   const server = createApi(database).listen(0);
   await new Promise<void>((resolve) => server.once("listening", resolve));
@@ -177,6 +192,17 @@ test("/api/v1/prices permite listar catálogo sin query", async () => {
     const body = (await response.json()) as { data: Row[] };
     assert.equal(response.status, 200);
     assert.equal(body.data.length, 2);
+  });
+});
+
+test("/api/v1/prices conserva filtros source y store", async () => {
+  await withApi(async (baseUrl) => {
+    const response = await fetch(
+      `${baseUrl}/api/v1/prices?source=profeco&store=tienda-a`,
+    );
+    const body = (await response.json()) as { data: Row[] };
+    assert.equal(response.status, 200);
+    assert.equal(body.data.length, 0);
   });
 });
 
@@ -236,6 +262,17 @@ test("/api/v1/nearby devuelve distancia y ordena por cercanía", async () => {
       body.data.map((row) => row.distance_km),
       [2.1, 5.2],
     );
+  });
+});
+
+test("/api/v1/nearby conserva filtros source y store", async () => {
+  await withApi(async (baseUrl) => {
+    const response = await fetch(
+      `${baseUrl}/api/v1/nearby?query=coca&lat=19.43&lng=-99.13&source=profeco&store=tienda-a`,
+    );
+    const body = (await response.json()) as { data: Row[] };
+    assert.equal(response.status, 200);
+    assert.equal(body.data.length, 2);
   });
 });
 

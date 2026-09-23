@@ -1,0 +1,27 @@
+{
+  "captured_at": "2026-09-22T11:20:54.689262+00:00",
+  "head": "17885b7424b252f7a557203eb4812003dd6cb051",
+  "note": "Cambios locales preexistentes: registrar hashes no implica aprobación, commit ni aplicación de SQL. Las dos migraciones fueron observadas en el historial remoto durante la auditoría del 22/09/2026.",
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha256": "a4a71b4c138f7415ef2b90b9d95be88b5e79869279d60a5fac222093bd74273d"
+    },
+    {
+      "path": "apps/flutter_app/lib/src/services/market_api.dart",
+      "sha256": "360cda131f23c8ab8f54bed9f26e58e4ad66d0559d168fceb0be12553df828dc"
+    },
+    {
+      "path": "apps/flutter_app/tools/ingestion/bin/stage_ndjson.dart",
+      "sha256": "e6eb925edbf359df8aea7dceed9b44452773651ff8822381765ee22ac06f840c"
+    },
+    {
+      "path": "apps/flutter_app/supabase/migrations/20260921121843_harden_ingestion_idempotency.sql",
+      "sha256": "43d0422a5b1badaaf0792f76e1e6d221b8e58f15e9565beac1fecf898d9f9d08"
+    },
+    {
+      "path": "apps/flutter_app/supabase/migrations/20260921122029_publish_fresh_prices_by_branch.sql",
+      "sha256": "af8f3dc3f02631bfcdbe17f3eb07ab9492be7a756c22e91cb239dcf8ef50dd2d"
+    }
+  ]
+}

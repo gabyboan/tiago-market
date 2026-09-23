@@ -1,36 +1,14 @@
 import type { ProductMeta } from "../products/products-test.js";
-import { createBrowserPage } from "./browser.js";
+import { scrapeWalmartFamily } from "./walmart-family.js";
 import type { ScraperResult } from "./types.js";
 
 export async function scrapeWalmart(
   searchTerm: string,
-  _productMeta: ProductMeta,
+  productMeta: ProductMeta,
 ): Promise<ScraperResult> {
-  const { browser, page } = await createBrowserPage();
-
-  try {
-    await page.goto(
-      `https://super.walmart.com.mx/search?q=${encodeURIComponent(searchTerm)}`,
-      { waitUntil: "domcontentloaded" },
-    );
-
-    // TODO: validar términos de uso y confirmar selectores antes de activar.
-    return {
-      ok: false,
-      storeSlug: "walmart",
-      searchTerm,
-      products: [],
-      error: "Scraper Walmart pendiente de selectores validados.",
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      storeSlug: "walmart",
-      searchTerm,
-      products: [],
-      error: error instanceof Error ? error.message : "Error desconocido",
-    };
-  } finally {
-    await browser.close();
-  }
+  return scrapeWalmartFamily(searchTerm, productMeta, {
+    storeSlug: "walmart-mx",
+    storeName: "Walmart México",
+    searchUrl: "https://super.walmart.com.mx/search?q={query}",
+  });
 }

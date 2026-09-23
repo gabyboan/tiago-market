@@ -1,5 +1,7 @@
 # Tiago Market: readiness para piloto
 
+> **Documento histórico de julio.** Para el estado vigente ver [auditoría del 22/09/2026](estado-2026-09-22.md). Las RPC v2 ya están disponibles y existe un lote Home Depot del 21/09; siguen pendientes calidad de datos, cobertura de supermercados y firma. Las afirmaciones de validación de favoritos/lista de este documento no se sostienen en el código actual.
+
 **Última revisión:** 26 de julio de 2026
 
 **Rama auditada:** `codex/release-tiago-market-v0.8.0` / PR #5

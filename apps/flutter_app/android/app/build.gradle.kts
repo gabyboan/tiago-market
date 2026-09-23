@@ -28,6 +28,10 @@ if (requestedReleaseBuild && !hasReleaseKeystore) {
     )
 }
 
+if (requestedReleaseBuild && !hasGoogleServicesConfig) {
+    throw GradleException("Release builds require android/app/google-services.json for Crashlytics.")
+}
+
 if (hasGoogleServicesConfig) {
     apply(plugin = "com.google.gms.google-services")
     apply(plugin = "com.google.firebase.crashlytics")
@@ -71,11 +75,7 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (hasReleaseKeystore) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 }

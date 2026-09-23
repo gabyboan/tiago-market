@@ -1,0 +1,16 @@
+{
+  "requested_url": "https://www.chedraui.com.mx/robots.txt",
+  "final_url": "https://www.chedraui.com.mx/robots.txt",
+  "status_code": 200,
+  "started_at": "2026-09-22T11:20:38.208196+00:00",
+  "captured_at": "2026-09-22T11:20:39.526759+00:00",
+  "headers": {
+    "Content-Type": "text/plain",
+    "Date": "Tue, 22 Sep 2026 11:20:39 GMT",
+    "Cache-Control": "public, max-age=41, stale-while-revalidate=10, stale-if-error=600"
+  },
+  "request_count": 1,
+  "cookies_persisted": false,
+  "credentials_used": false,
+  "body_sha256": "16f00eab923cc66482eb064e94de910039fee84e24fe890ca707e22a2b68425e"
+}

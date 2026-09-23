@@ -53,13 +53,10 @@ class WelcomePage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 30),
-                      if (authEnabled)
-                        const GoogleSignInButton(expanded: true)
-                      else
-                        const FilledButton(
-                          onPressed: null,
-                          child: Text('Configura Supabase para iniciar sesión'),
-                        ),
+                      const GoogleSignInButton(
+                        expanded: true,
+                        enabled: authEnabled,
+                      ),
                       const SizedBox(height: 10),
                       OutlinedButton.icon(
                         onPressed: () => _continueAsGuest(context),

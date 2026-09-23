@@ -3,6 +3,7 @@ key.properties
 *.jks
 *.keystore
 /.gradle
+/.kotlin/
 /captures/
 /gradlew
 /gradlew.bat

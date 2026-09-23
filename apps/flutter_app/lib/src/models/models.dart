@@ -33,13 +33,21 @@ class PriceResult {
     this.imageUrl,
     this.presentation,
     this.category,
+    this.brand,
+    this.gtin,
+    this.variantLabel,
+    this.netQuantity,
+    this.unit,
+    this.packCount,
+    this.canonicalVariantKey,
+    this.imageCount = 0,
   });
 
   factory PriceResult.fromJson(Map<String, dynamic> json) {
     return PriceResult(
-      storeName: json['store_name'] as String? ?? 'Tienda',
+      storeName: json['store_name'] as String? ?? '',
       storeSlug: json['store_slug'] as String?,
-      productName: json['product_name'] as String? ?? 'Producto',
+      productName: json['product_name'] as String? ?? '',
       normalizedName: json['normalized_name'] as String? ??
           json['product_name'] as String? ??
           'producto',
@@ -49,7 +57,7 @@ class PriceResult {
       price: (json['price'] as num?)?.toDouble() ?? 0,
       currency: json['currency'] as String? ?? '',
       available: json['available'] as bool? ?? false,
-      source: json['source'] as String? ?? 'fuente no informada',
+      source: json['source'] as String? ?? '',
       capturedAt: json['captured_at'] as String? ?? '',
       freshness: json['freshness'] as String? ?? 'old',
       daysOld: (json['days_old'] as num?)?.toInt() ?? 0,
@@ -59,6 +67,14 @@ class PriceResult {
       imageUrl: json['image_url'] as String?,
       presentation: json['presentation'] as String?,
       category: json['category'] as String?,
+      brand: json['brand'] as String?,
+      gtin: json['gtin'] as String?,
+      variantLabel: json['variant_label'] as String?,
+      netQuantity: (json['net_quantity'] as num?)?.toDouble(),
+      unit: json['unit'] as String?,
+      packCount: (json['pack_count'] as num?)?.toInt(),
+      canonicalVariantKey: json['canonical_variant_key'] as String?,
+      imageCount: (json['image_count'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -83,6 +99,14 @@ class PriceResult {
         'image_url': imageUrl,
         'presentation': presentation,
         'category': category,
+        'brand': brand,
+        'gtin': gtin,
+        'variant_label': variantLabel,
+        'net_quantity': netQuantity,
+        'unit': unit,
+        'pack_count': packCount,
+        'canonical_variant_key': canonicalVariantKey,
+        'image_count': imageCount,
       };
 
   final String storeName;
@@ -105,6 +129,14 @@ class PriceResult {
   final String? imageUrl;
   final String? presentation;
   final String? category;
+  final String? brand;
+  final String? gtin;
+  final String? variantLabel;
+  final double? netQuantity;
+  final String? unit;
+  final int? packCount;
+  final String? canonicalVariantKey;
+  final int imageCount;
 
   String get comparisonKey {
     final name = normalizedName.isEmpty
@@ -127,9 +159,20 @@ class PriceResult {
     return pack == null ? baseName : '$baseName|$pack';
   }
 
+  String get identityKey =>
+      '$storeSlug|$storeName|$branchId|$storeProductUrl|$productName|$presentation';
+
+  String? get evidenceUrl => _httpUrl(observationUrl)
+      ? observationUrl
+      : _httpUrl(storeProductUrl)
+          ? storeProductUrl
+          : null;
+
   String get observationLabel {
-    final age = daysOld == 1 ? 'hace 1 día' : 'hace $daysOld días';
-    return 'Actualizado $age · fuente directa';
+    final date = DateTime.tryParse(capturedAt)?.toUtc();
+    return date == null
+        ? 'Captura no informada'
+        : 'Capturado ${date.toIso8601String().substring(0, 16).replaceFirst('T', ' ')} UTC';
   }
 
   String? pilotRejectionReason({
@@ -151,8 +194,8 @@ class PriceResult {
       return 'future_observation';
     }
     if (freshness == 'old' ||
-        daysOld > 21 ||
-        observedAt.isBefore(referenceTime.subtract(const Duration(days: 21)))) {
+        daysOld >= 7 ||
+        !observedAt.isAfter(referenceTime.subtract(const Duration(days: 7)))) {
       return 'expired';
     }
 
@@ -161,14 +204,26 @@ class PriceResult {
       if (_isBlank(branchName) || _isBlank(branchAddress)) {
         return 'missing_branch_details';
       }
-      return null;
+    } else if (!_isBlank(branchId) ||
+        !_isBlank(branchName) ||
+        distanceKm != null) {
+      return 'local_result_in_online_mode';
     }
-
-    if (_isBlank(storeProductUrl) && _isBlank(observationUrl)) {
-      return 'missing_online_evidence';
+    if (evidenceUrl == null) {
+      return requireBranch
+          ? 'missing_local_evidence'
+          : 'missing_online_evidence';
     }
+    if (_isBlank(presentation)) return 'missing_presentation';
     return null;
   }
+}
+
+bool _httpUrl(String? value) {
+  final uri = Uri.tryParse(value ?? '');
+  return uri != null &&
+      ['http', 'https'].contains(uri.scheme) &&
+      uri.host.isNotEmpty;
 }
 
 bool _isBlank(String? value) => value == null || value.trim().isEmpty;
@@ -378,7 +433,7 @@ class FavoriteItem {
         comparisonKey: json['comparison_key'] as String,
         productName: json['product_name'] as String,
         bestPrice: (json['best_price'] as num?)?.toDouble() ?? 0,
-        bestStoreName: json['best_store_name'] as String? ?? 'Tienda',
+        bestStoreName: json['best_store_name'] as String? ?? '',
         imageUrl: json['image_url'] as String?,
         presentation: json['presentation'] as String?,
         category: json['category'] as String?,

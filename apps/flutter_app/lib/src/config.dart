@@ -7,3 +7,8 @@ const supabaseClientKey =
     supabasePublishableKey != '' ? supabasePublishableKey : supabaseAnonKey;
 const authEnabled = supabaseUrl != '' && supabaseClientKey != '';
 const sentryDsn = String.fromEnvironment('SENTRY_DSN');
+
+const appEnvironment =
+    String.fromEnvironment('APP_ENV', defaultValue: 'production');
+const crashlyticsEnabled =
+    bool.fromEnvironment('CRASHLYTICS_ENABLED', defaultValue: true);

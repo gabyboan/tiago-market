@@ -1,5 +1,7 @@
 # Tiago Market: estado y próximos caminos
 
+> **Antecedente del 18/09.** Ver [estado actualizado](estado-2026-09-22.md) y [entrega Chedraui](chedraui-validation-2026-09-22.md). Los caminos comerciales aquí descritos no constituyen alcance acordado.
+
 Revisión: 18 de septiembre de 2026.
 
 ## Situación actual

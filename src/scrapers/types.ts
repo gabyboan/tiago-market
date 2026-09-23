@@ -21,6 +21,13 @@ export type ScrapedProduct = {
   searchTerm: string;
   internalProductName: string;
   normalizedName: string;
+  brand?: string | null;
+  gtin?: string | null;
+  variantLabel?: string | null;
+  netQuantity?: number | null;
+  unit?: string | null;
+  packCount?: number | null;
+  canonicalVariantKey?: string | null;
   category: string | null;
   externalName: string;
   price: number | null;

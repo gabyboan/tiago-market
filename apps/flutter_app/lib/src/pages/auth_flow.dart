@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tiago_market_app/src/config.dart';
 import 'package:tiago_market_app/src/navigation/app_routes.dart';
+import 'package:tiago_market_app/src/pages/welcome_page.dart';
 import 'package:tiago_market_app/src/widgets/session_loading_page.dart';
 
 class AuthFlowGate extends StatefulWidget {
@@ -59,13 +60,14 @@ class _AuthFlowGateState extends State<AuthFlowGate> {
     }
 
     final user = _user;
-    final targetRoute = user == null
-        ? AppRoutes.welcome
-        : (user.userMetadata?['role'] as String?) == 'buyer'
-            ? AppRoutes.search
-            : (user.userMetadata?['role'] as String?) == 'seller'
-                ? AppRoutes.sellerComingSoon
-                : AppRoutes.roleSelection;
+    // Keep the auth listener mounted while Google sign-in is in progress.
+    if (user == null) return const WelcomePage();
+
+    final targetRoute = (user.userMetadata?['role'] as String?) == 'buyer'
+        ? AppRoutes.search
+        : (user.userMetadata?['role'] as String?) == 'seller'
+            ? AppRoutes.sellerComingSoon
+            : AppRoutes.roleSelection;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;

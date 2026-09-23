@@ -70,8 +70,7 @@ Future<void> main(List<String> args) async {
     rejectedRecordCount: report.rejected,
     duplicateInputCount: report.duplicateInputRecords,
   );
-  final sqlPath =
-      options.sqlOutPath ??
+  final sqlPath = options.sqlOutPath ??
       '${Directory.systemTemp.path}/tiago_market_stage_${DateTime.now().microsecondsSinceEpoch}.sql';
   await File(sqlPath).writeAsString(sql);
   stderr.writeln('Wrote staging SQL: $sqlPath');
@@ -89,13 +88,16 @@ Future<void> main(List<String> args) async {
     );
   }
 
-  final result = await Process.run('psql', [
-    databaseUrl,
-    '--set',
-    'ON_ERROR_STOP=1',
-    '--file',
-    sqlPath,
-  ], runInShell: false);
+  final result = await Process.run(
+      'psql',
+      [
+        databaseUrl,
+        '--set',
+        'ON_ERROR_STOP=1',
+        '--file',
+        sqlPath,
+      ],
+      runInShell: false);
   stdout.write(result.stdout);
   stderr.write(result.stderr);
 
@@ -180,11 +182,6 @@ List<ValidationIssue> validateRecord(Map<String, dynamic> record) {
     'evidence_kind',
     'store_product_url',
     'content_hash',
-    'branch_external_key',
-    'branch_name',
-    'branch_address',
-    'branch_municipality',
-    'branch_state',
     'external_reference',
     'review_status',
   ];
@@ -264,24 +261,83 @@ List<ValidationIssue> validateRecord(Map<String, dynamic> record) {
     );
   }
 
-  final latitude = record['latitude'];
-  if (!_isMexicoLatitude(latitude)) {
+  final hasBranchData = const [
+    'branch_external_key',
+    'branch_name',
+    'branch_address',
+    'branch_municipality',
+    'branch_state',
+    'latitude',
+    'longitude',
+  ].any((field) {
+    final value = record[field];
+    return value != null && value.toString().trim().isNotEmpty;
+  });
+  final priceScope =
+      record['price_scope'] ?? (hasBranchData ? 'branch_local' : 'online');
+  if (priceScope != 'online' && priceScope != 'branch_local') {
     issues.add(
       ValidationIssue(
-        code: 'invalid_latitude',
-        message: 'has invalid Mexico latitude: $latitude',
+        code: 'invalid_price_scope',
+        message: 'has invalid price_scope: $priceScope',
       ),
     );
-  }
+  } else if (priceScope == 'online') {
+    for (final field in const [
+      'branch_external_key',
+      'branch_name',
+      'branch_address',
+      'branch_municipality',
+      'branch_state',
+      'latitude',
+      'longitude',
+    ]) {
+      if (record[field] != null && record[field].toString().trim().isNotEmpty) {
+        issues.add(
+          ValidationIssue(
+            code: 'online_has_branch_data',
+            message: 'online record must not include $field',
+          ),
+        );
+      }
+    }
+  } else {
+    for (final field in const [
+      'branch_external_key',
+      'branch_name',
+      'branch_address',
+      'branch_municipality',
+      'branch_state',
+    ]) {
+      final value = record[field];
+      if (value is! String || value.trim().isEmpty) {
+        issues.add(
+          ValidationIssue(
+            code: 'missing_$field',
+            message: 'missing string field: $field',
+          ),
+        );
+      }
+    }
+    final latitude = record['latitude'];
+    if (!_isMexicoLatitude(latitude)) {
+      issues.add(
+        ValidationIssue(
+          code: 'invalid_latitude',
+          message: 'has invalid Mexico latitude: $latitude',
+        ),
+      );
+    }
 
-  final longitude = record['longitude'];
-  if (!_isMexicoLongitude(longitude)) {
-    issues.add(
-      ValidationIssue(
-        code: 'invalid_longitude',
-        message: 'has invalid Mexico longitude: $longitude',
-      ),
-    );
+    final longitude = record['longitude'];
+    if (!_isMexicoLongitude(longitude)) {
+      issues.add(
+        ValidationIssue(
+          code: 'invalid_longitude',
+          message: 'has invalid Mexico longitude: $longitude',
+        ),
+      );
+    }
   }
 
   for (final field in const ['source_url', 'store_product_url']) {
@@ -339,6 +395,22 @@ List<ValidationIssue> validateRecord(Map<String, dynamic> record) {
         ),
       );
     }
+  }
+
+  final observed =
+      DateTime.tryParse(record['observed_at']?.toString() ?? '')?.toUtc();
+  final now = DateTime.now().toUtc();
+  if (observed != null &&
+      (!observed.isAfter(now.subtract(const Duration(days: 7))) ||
+          observed.isAfter(now.add(const Duration(minutes: 5))))) {
+    issues.add(const ValidationIssue(
+        code: 'observation_not_current',
+        message:
+            'observed_at must be within the last 7 days and not in the future'));
+  }
+  if (record['currency'] != 'MXN') {
+    issues.add(const ValidationIssue(
+        code: 'non_mxn', message: 'currency must be MXN'));
   }
 
   final rawPayload = record['raw_payload'];
@@ -607,8 +679,8 @@ String buildStageSql(
   return '''
 begin;
 
-with scrape_run as (
-  insert into ingestion.scrape_runs (
+-- Create the run in a separate statement so the final UPDATE can see it.
+insert into ingestion.scrape_runs (
     source,
     status,
     started_at,
@@ -631,7 +703,10 @@ with scrape_run as (
       'duplicate_input_records', $duplicateInputCount
     )
   )
-  returning id
+returning set_config('tiago.ingestion_run_id', id::text, true);
+
+with scrape_run as (
+  select current_setting('tiago.ingestion_run_id')::uuid as id
 ),
 records as (
   select value as payload
@@ -654,6 +729,7 @@ input_prepared as (
       'store_brand', r.payload->>'store_brand',
       'store_slug', r.payload->>'store_slug',
       'source_product_name', r.payload->>'source_product_name',
+        'price_scope', coalesce(r.payload->>'price_scope', 'branch_local'),
       'normalized_name', r.payload->>'normalized_name',
       'category', r.payload->>'category',
       'presentation', r.payload->>'presentation',
@@ -770,15 +846,30 @@ publishable as (
         where jsonb_typeof(payload->'validation_errors') = 'array'
       )
     ), 0) = 0
-    and nullif(normalized_payload->>'branch_external_key', '') is not null
-    and nullif(normalized_payload->>'branch_name', '') is not null
-    and nullif(normalized_payload->>'branch_address', '') is not null
-    and nullif(normalized_payload->>'branch_municipality', '') is not null
-    and nullif(normalized_payload->>'branch_state', '') is not null
-    and (normalized_payload->>'latitude') ~ '^-?[0-9]+(\\.[0-9]+)?\$'
-    and (normalized_payload->>'longitude') ~ '^-?[0-9]+(\\.[0-9]+)?\$'
-    and (normalized_payload->>'latitude')::numeric between 14 and 33.5
-    and (normalized_payload->>'longitude')::numeric between -119 and -86
+    and (
+      (
+        normalized_payload->>'price_scope' = 'online'
+        and nullif(normalized_payload->>'branch_external_key', '') is null
+        and nullif(normalized_payload->>'branch_name', '') is null
+        and nullif(normalized_payload->>'branch_address', '') is null
+        and nullif(normalized_payload->>'branch_municipality', '') is null
+        and nullif(normalized_payload->>'branch_state', '') is null
+        and nullif(normalized_payload->>'latitude', '') is null
+        and nullif(normalized_payload->>'longitude', '') is null
+      )
+      or (
+        normalized_payload->>'price_scope' = 'branch_local'
+        and nullif(normalized_payload->>'branch_external_key', '') is not null
+        and nullif(normalized_payload->>'branch_name', '') is not null
+        and nullif(normalized_payload->>'branch_address', '') is not null
+        and nullif(normalized_payload->>'branch_municipality', '') is not null
+        and nullif(normalized_payload->>'branch_state', '') is not null
+        and (normalized_payload->>'latitude') ~ '^-?[0-9]+(\\.[0-9]+)?\$'
+        and (normalized_payload->>'longitude') ~ '^-?[0-9]+(\\.[0-9]+)?\$'
+        and (normalized_payload->>'latitude')::numeric between 14 and 33.5
+        and (normalized_payload->>'longitude')::numeric between -119 and -86
+      )
+    )
 ),
 store_input as (
   select distinct on (normalized_payload->>'store_slug')
@@ -835,6 +926,7 @@ branch_input as (
     (p.normalized_payload->>'longitude')::numeric as longitude
   from publishable p
   join stores_upsert s on s.slug = p.normalized_payload->>'store_slug'
+  where p.normalized_payload->>'price_scope' = 'branch_local'
   order by
     p.source,
     p.normalized_payload->>'branch_external_key',
@@ -900,13 +992,13 @@ store_product_input as (
     (p.normalized_payload->>'available')::boolean,
     (p.payload->>'observed_at')::timestamptz,
     p.source,
-    null,
+    null::uuid,
     p.normalized_payload->>'store_product_url'
   from publishable p
   join stores_upsert s on s.slug = p.normalized_payload->>'store_slug'
   join products_upsert product
     on product.normalized_name = p.normalized_payload->>'normalized_name'
-  join branches_upsert b
+    left join branches_upsert b
     on b.source = p.source
    and b.external_key = p.normalized_payload->>'branch_external_key'
   order by
@@ -957,7 +1049,8 @@ snapshot_candidates_raw as (
     p.normalized_payload->>'branch_name' as source_branch_name,
     p.normalized_payload->>'external_reference' as external_reference,
     p.payload as raw_payload,
-    b.id as branch_id
+      b.id as branch_id,
+      p.normalized_payload->>'price_scope' as price_scope
   from publishable p
   join stores_upsert s on s.slug = p.normalized_payload->>'store_slug'
   join products_upsert product
@@ -966,10 +1059,16 @@ snapshot_candidates_raw as (
     on sp.store_id = s.id
    and sp.product_id = product.id
    and sp.external_url = p.normalized_payload->>'store_product_url'
-  join branches_upsert b
+  left join branches_upsert b
     on b.source = p.source
    and b.external_key = p.normalized_payload->>'branch_external_key'
-  where b.id is not null
+  where (
+    (p.normalized_payload->>'price_scope' = 'online' and b.id is null)
+    or (
+      p.normalized_payload->>'price_scope' = 'branch_local'
+      and b.id is not null
+    )
+  )
 ),
 snapshot_candidates as (
   select distinct on (store_product_id, branch_id, captured_at)
@@ -984,7 +1083,8 @@ snapshot_candidates as (
     source_branch_name,
     external_reference,
     raw_payload,
-    branch_id
+    branch_id,
+    price_scope
   from snapshot_candidates_raw
   order by store_product_id, branch_id, captured_at, external_reference
 ),
@@ -1013,7 +1113,8 @@ inserted_snapshots as (
     source_branch_name,
     external_reference,
     raw_payload,
-    branch_id
+      branch_id,
+      price_scope
   )
   select
     c.store_product_id,
@@ -1028,11 +1129,10 @@ inserted_snapshots as (
     c.source_branch_name,
     c.external_reference,
     c.raw_payload,
-    c.branch_id
+    c.branch_id,
+      c.price_scope
   from snapshot_candidates c
-  on conflict (store_product_id, branch_id, captured_at)
-    where branch_id is not null
-  do nothing
+  on conflict do nothing
   returning id
 ),
 group_report as (

@@ -9,8 +9,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 const _googleIosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
 const _googleWebClientId = String.fromEnvironment(
   'GOOGLE_WEB_CLIENT_ID',
-  defaultValue:
-      '99518273807-ru4jfdia2ku61a7vvhvvg3utc7vo6mqn.apps.googleusercontent.com',
 );
 
 final _googleSignIn = GoogleSignIn.instance;
@@ -138,9 +136,14 @@ String _googleSignInErrorMessage(Object error) {
 }
 
 class GoogleSignInButton extends StatefulWidget {
-  const GoogleSignInButton({super.key, this.expanded = false});
+  const GoogleSignInButton({
+    super.key,
+    this.expanded = false,
+    this.enabled = true,
+  });
 
   final bool expanded;
+  final bool enabled;
 
   @override
   State<GoogleSignInButton> createState() => _GoogleSignInButtonState();
@@ -178,7 +181,7 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
           )
         : const Icon(Icons.login_rounded);
     final button = FilledButton.icon(
-      onPressed: _loading ? null : _signIn,
+      onPressed: _loading || !widget.enabled ? null : _signIn,
       icon: icon,
       label: const Padding(
         padding: EdgeInsets.symmetric(vertical: 14),

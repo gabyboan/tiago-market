@@ -36,6 +36,11 @@ class LegalInfoPage extends StatelessWidget {
               ),
               SizedBox(height: 12),
               Text(
+                'Las versiones release de Android envían informes de fallos a Firebase Crashlytics. Estos diagnósticos incluyen información técnica del dispositivo, la versión de la app y la traza del error para investigar problemas de estabilidad.',
+                style: TextStyle(height: 1.5),
+              ),
+              SizedBox(height: 12),
+              Text(
                 'Tiago Market cumple con la Ley Federal de Protección de Datos Personales en Posesión de los Particulares de México. Tus datos se usan únicamente para la prestación del servicio y para mejorar tu experiencia dentro de la app.',
                 style: TextStyle(height: 1.5),
               ),

@@ -34,7 +34,9 @@ class FakeMarketApi extends MarketApi {
   }
 
   @override
-  Future<List<ProductCategory>> categories() async => categoriesResponse;
+  Future<List<ProductCategory>> categories(
+          {double? latitude, double? longitude, double radiusKm = 10}) async =>
+      categoriesResponse;
 
   @override
   Future<int> nearbyBranchCount(
@@ -105,8 +107,7 @@ void main() {
     expect(controller.filteredResults, contains(result));
   });
 
-  test('usa precios online cuando la ubicacion no tiene precios por sucursal',
-      () async {
+  test('no mezcla online al quedar vacía una búsqueda local', () async {
     final onlineResult = PriceResult(
       storeName: 'Chedraui online',
       productName: 'Telera',
@@ -125,11 +126,13 @@ void main() {
       ..longitude = -99.13;
 
     await Future<void>.delayed(Duration.zero);
-    await controller.searchWithLocationFallback();
+    await controller.searchNearby();
 
+    expect(controller.results, isEmpty);
+    expect(controller.emptyMessage, contains('sucursales verificadas'));
+    controller.clearLocation();
+    await Future<void>.delayed(Duration.zero);
     expect(controller.results, contains(onlineResult));
-    expect(controller.showingOnlineFallback, isTrue);
-    expect(controller.nearbyBranches, 3);
     expect(controller.error, isNull);
   });
 

@@ -1,0 +1,17 @@
+{
+  "verified_at": "2026-09-22T11:27:33.390084+00:00",
+  "preexisting_file_hashes_unchanged": 5,
+  "json_parse": "passed",
+  "robots_response_hash": "passed",
+  "relative_links_checked": 18,
+  "recheck_script_offline_cases": [
+    "200 responses require manual review",
+    "429 stops after one request",
+    "cookies not persisted",
+    "no product or session requests",
+    "existing output directory refused"
+  ],
+  "live_recheck_script_executed": false,
+  "application_test_suites_rerun": false,
+  "reason": "Only documentation and a passive reproduction helper changed; application tests already passed in preceding audit."
+}

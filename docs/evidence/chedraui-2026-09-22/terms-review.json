@@ -1,0 +1,15 @@
+{
+  "review_type": "manual_preflight",
+  "source_url": "https://www.chedraui.com.mx/terminos-y-condiciones/plataformas-digitales",
+  "captured_at": "2026-09-22T11:21:29.634641+00:00",
+  "source_body_sha256": "19755df39ecf7266ad16fc3dbd4c770e53776f6f99891fe6b92929f8660f766c",
+  "section": "2.- DE LA LICENCIA",
+  "stated_terms_updated_at": "2025-05-12",
+  "excerpts": [
+    "exclusivamente para uso personal, no comercial",
+    "a menos que Chedraui le haya otorgado su autorización previamente y por escrito"
+  ],
+  "finding": "La reutilización para Tiago Market requiere resolver la autorización escrita; el cliente no tiene acceso o acuerdo confirmado.",
+  "authorized_access_confirmed": false,
+  "robots_is_reuse_license": false
+}

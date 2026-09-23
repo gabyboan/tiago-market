@@ -1,5 +1,7 @@
 # Capa de datos V1: diagnóstico y runbook
 
+> **Actualización 22/09/2026:** el remoto ya registra `20260921121843` y `20260921122029`; las RPC v2 responden y hay 18 observaciones Home Depot recientes. Las referencias siguientes a migraciones no aplicadas y falta de acceso remoto son históricas: no ejecutar esos pasos sin reconciliar el esquema. Ver [diagnóstico actual](../../../docs/estado-2026-09-22.md).
+
 ## Diagnóstico técnico
 
 La separación de seguridad es correcta: Flutter consume RPCs públicas limitadas,

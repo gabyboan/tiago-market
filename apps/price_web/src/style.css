@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+:root { font-family: 'DM Sans', sans-serif; color: #18352d; background: #f5f7f5; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; background: radial-gradient(circle at 85% 8%, #d7eee7 0, transparent 28rem), #f5f7f5; }
+button, input, select { font: inherit; }
+.shell { max-width: 1240px; margin: 0 auto; padding: 0 38px 48px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 26px 0; border-bottom: 1px solid #cfe1db; }
+.brand { display: flex; align-items: center; gap: 10px; color: #18352d; font: 700 1.24rem 'Space Grotesk', sans-serif; letter-spacing: -.04em; text-decoration: none; }
+.brand-logo { width: 36px; height: 36px; border-radius: 50%; }
+.status-pill { color: #657064; font-size: .76rem; text-transform: uppercase; letter-spacing: .1em; }
+.status-pill i { display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: #006c51; }
+.hero { display: flex; align-items: end; justify-content: space-between; min-height: 270px; padding: 66px 0 55px; }
+.eyebrow, .product-category { margin: 0 0 15px; color: #006c51; font-size: .72rem; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
+h1 { margin: 0; color: #23342a; font: 700 clamp(3rem, 7vw, 6.2rem)/.9 'Space Grotesk', sans-serif; letter-spacing: -.08em; }
+h1 em { color: #006c51; font-style: normal; }
+.intro { max-width: 360px; margin: 25px 0 0; color: #667064; font-size: 1rem; line-height: 1.6; }
+.hero-note { display: flex; align-items: center; gap: 15px; color: #006c51; font: 600 .78rem/1.25 'Space Grotesk', sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+.hero-note span { font-size: 2.5rem; font-weight: 400; }
+.hero-note p { margin: 0; }
+.search-panel { padding: 24px; background: #dceee8; border-top: 1px solid #b9d8ce; }
+.search-box { display: flex; align-items: center; gap: 13px; padding: 8px 8px 8px 20px; background: #ffffff; border: 1px solid #b9d8ce; }
+.search-box > span { color: #006c51; font-size: 1.8rem; transform: rotate(-20deg); }
+.search-box input { min-width: 0; flex: 1; color: #1f2a25; background: transparent; border: 0; outline: 0; font-size: 1rem; }
+.search-box button, .load-more { padding: 13px 23px; color: #ffffff; background: #006c51; border: 0; cursor: pointer; font-weight: 700; }
+.search-box button:hover, .load-more:hover { background: #005640; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; padding-top: 19px; color: #657064; font-size: .85rem; }
+.sort-control { display: flex; align-items: center; gap: 8px; }
+.sort-control select { padding: 5px 25px 5px 2px; color: #1f2a25; background: transparent; border: 0; font-weight: 700; outline: 0; }
+.feedback { margin: 24px 0 0; padding: 14px 18px; color: #8d3d22; background: #f5d9c9; font-size: .9rem; }
+.product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; padding: 30px 0; }
+.product-card { overflow: hidden; background: #ffffff; border: 1px solid #d8e5e0; }
+.product-image { position: relative; display: grid; place-items: center; height: 185px; background: #e2f0ec; }
+.product-image img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; }
+.product-image img[hidden] { display: none; }
+.image-placeholder { color: #a4b49b; font: 700 5rem 'Space Grotesk', sans-serif; }
+.image-placeholder[hidden] { display: none; }
+.category { position: absolute; top: 13px; left: 13px; padding: 5px 8px; color: #006c51; background: #cbe5dc; font-size: .66rem; font-weight: 700; text-transform: uppercase; }
+.product-body { padding: 21px; }
+.product-category { margin-bottom: 8px; color: #81907a; font-size: .65rem; }
+.product-body h2 { min-height: 48px; margin: 0; color: #26382d; font: 600 1.12rem/1.15 'Space Grotesk', sans-serif; letter-spacing: -.03em; }
+.presentation { min-height: 20px; margin: 5px 0 14px; color: #8a9287; font-size: .78rem; }
+.best-price { display: flex; align-items: baseline; justify-content: space-between; margin-top: 17px; padding-top: 15px; border-top: 1px solid #e2e5dd; }
+.best-price span { color: #81907a; font-size: .72rem; text-transform: uppercase; }
+.best-price strong { color: #006c51; font: 700 1.6rem 'Space Grotesk', sans-serif; }
+.best-store { margin: 4px 0 16px; color: #7a847a; font-size: .78rem; }
+.best-store b { color: #26382d; }
+.price-list { border-top: 1px solid #e2e5dd; }
+.price-row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid #eef0e9; color: #647064; font-size: .78rem; }
+.price-row a { color: inherit; text-decoration: none; }
+.price-row a:hover { color: #006c51; text-decoration: underline; }
+.price-row b { color: #26382d; font-weight: 700; white-space: nowrap; }
+.store-count { margin: 14px 0 0; color: #a0a89c; font-size: .72rem; }
+.load-more { display: block; margin: 0 auto 40px; }
+.empty-state { grid-column: 1 / -1; padding: 70px 20px; text-align: center; border: 1px dashed #c5cdbc; }
+.empty-state span { color: #006c51; font-size: 2.5rem; }
+.empty-state h2 { margin: 13px 0 6px; font: 600 1.4rem 'Space Grotesk', sans-serif; }
+.empty-state p { margin: 0; color: #788277; }
+footer { display: flex; justify-content: space-between; padding-top: 20px; color: #8a9387; border-top: 1px solid #d6d8ca; font-size: .67rem; letter-spacing: .1em; }
+@media (max-width: 850px) { .product-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 580px) { .shell { padding: 0 18px 30px; } .topbar { padding: 20px 0; } .status-pill { display: none; } .hero { min-height: auto; padding: 54px 0 42px; } .hero-note { display: none; } h1 { font-size: 3.8rem; } .search-panel { padding: 14px; } .search-box { padding-left: 13px; } .search-box button { padding: 12px 15px; } .toolbar { align-items: flex-start; flex-direction: column; gap: 9px; } .product-grid { grid-template-columns: 1fr; gap: 15px; } .product-image { height: 160px; } footer { flex-direction: column; gap: 9px; } }

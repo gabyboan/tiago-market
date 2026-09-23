@@ -35,7 +35,7 @@ class ProductComparisonCard extends StatelessWidget {
                 ? ProductImageFallback(storeName: best.storeName)
                 : Image.network(
                     best.imageUrl!,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) =>
                         ProductImageFallback(storeName: best.storeName),
                   ),
@@ -211,6 +211,10 @@ class PriceCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 12),
                   ),
+                  if (result.presentation != null) Text(result.presentation!),
+                  if (result.branchAddress != null)
+                    Text(result.branchAddress!,
+                        style: const TextStyle(fontSize: 12)),
                   Text(
                     result.observationLabel,
                     style: TextStyle(
@@ -227,14 +231,14 @@ class PriceCard extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                  if (result.storeProductUrl != null) ...[
+                  if (result.evidenceUrl != null) ...[
                     const SizedBox(height: 4),
                     Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
-                        onPressed: () => _openUrl(result.storeProductUrl!),
+                        onPressed: () => _openUrl(result.evidenceUrl!),
                         icon: const Icon(Icons.open_in_new_rounded, size: 17),
-                        label: const Text('Ver'),
+                        label: const Text('Ver fuente'),
                       ),
                     ),
                   ],
@@ -254,7 +258,7 @@ class PriceCard extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Text(
-              '\$${result.price.toStringAsFixed(2)}',
+              '\$${result.price.toStringAsFixed(2)} MXN',
               style: const TextStyle(
                 color: Color(0xFF006C51),
                 fontSize: 22,

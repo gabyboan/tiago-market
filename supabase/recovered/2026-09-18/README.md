@@ -1,5 +1,7 @@
 # SQL recuperado el 18 de septiembre de 2026
 
+> **Actualización 22/09/2026:** el remoto ahora registra 25 migraciones, incluidas `20260921121843` y `20260921122029`; las RPC v2 ya existen. Los conteos siguientes corresponden al rescate del 18/09. Ver [diagnóstico actual](../../../docs/estado-2026-09-22.md). Los SQL recuperados y sus checksums se conservan intactos.
+
 Archivo histórico para revisión; **no es una secuencia de migraciones lista para ejecutar**.
 No se aplicó SQL a Supabase durante la consolidación.
 

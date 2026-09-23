@@ -275,13 +275,15 @@ class _LocationControls extends StatelessWidget {
                 )
               : const Icon(Icons.my_location_rounded),
           label: Text(
-            controller.hasLocation ? 'Ubicación activa' : 'Usar mi ubicación',
+            controller.hasLocation
+                ? 'Ubicación activa'
+                : 'Buscar por ubicación',
           ),
         ),
         if (controller.hasLocation)
           ActionChip(
             avatar: const Icon(Icons.close_rounded, size: 18),
-            label: const Text('Quitar ubicación'),
+            label: const Text('Ver catálogo online'),
             onPressed: controller.clearLocation,
           ),
         DropdownButton<double>(
@@ -298,7 +300,7 @@ class _LocationControls extends StatelessWidget {
               ? (value) {
                   if (value == null) return;
                   controller.setRadiusKm(value);
-                  controller.searchWithLocationFallback();
+                  controller.searchNearby();
                 }
               : null,
         ),
@@ -317,7 +319,7 @@ class _LocationHint extends StatelessWidget {
     return Text(
       'Buscando dentro de ${controller.radiusKm.toStringAsFixed(0)} km. '
       'Tu ubicación se usa solo para esta consulta. '
-      '${controller.nearbyBranches} sucursales verificadas cerca.',
+      'Solo se muestran precios vinculados a una sucursal identificada.',
       style: TextStyle(
         fontSize: 12,
         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -405,17 +407,12 @@ class _NoticeSection extends StatelessWidget {
         NoticeCard(icon: Icons.info_outline, text: controller.error!),
       );
     }
-    if (controller.showingOnlineFallback && controller.results.isNotEmpty) {
-      notices.add(NoticeCard(
-        icon: Icons.storefront_outlined,
-        text: controller.localEmptyMessage ??
-            'Para esta búsqueda todavía no encontramos precios por sucursal cerca. Mostramos precios online cuando estén disponibles.',
-      ));
-      notices.add(const NoticeCard(
-        icon: Icons.public_rounded,
-        text: 'Precios online, no verificados para una sucursal cercana.',
-      ));
-    }
+    notices.add(NoticeCard(
+      icon: controller.hasLocation ? Icons.storefront_outlined : Icons.public,
+      text: controller.hasLocation
+          ? 'Precios de sucursales cercanas verificadas'
+          : 'Catálogo online · precios en MXN · sin ubicación',
+    ));
     if (controller.usingCache) {
       notices.add(const NoticeCard(
         icon: Icons.offline_bolt_outlined,
@@ -513,12 +510,11 @@ class _SearchResults extends StatelessWidget {
         else if (!controller.loading &&
             controller.hasMore &&
             !controller.usingDemo)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 18),
-            child: Center(
-              child: Text('Desliza para mostrar más productos'),
-            ),
-          ),
+          Center(
+              child: TextButton(
+            onPressed: () => controller.search(append: true),
+            child: const Text('Cargar más productos'),
+          )),
       ],
     );
   }

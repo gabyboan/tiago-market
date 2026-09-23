@@ -25,40 +25,74 @@ Future<void> main(List<String> args) async {
       userAgent: options.userAgent,
     );
 
-    final sitemapUrls = await discoverProductUrls(
-      client: client,
-      sitemapUrl: options.sitemapUrl,
-      userAgent: options.userAgent,
-      limit: options.limit,
-      robots: robots,
-    );
+    final sitemapUrls = options.urlsPath == null
+        ? await discoverProductUrls(
+            client: client,
+            sitemapUrl: options.sitemapUrl,
+            userAgent: options.userAgent,
+            limit: options.limit,
+            robots: robots,
+          )
+        : readProductUrls(options.urlsPath!).take(options.limit).toList();
+
+    final evidence = options.evidenceDirectory == null
+        ? null
+        : Directory(options.evidenceDirectory!);
+    if (evidence != null) {
+      if (evidence.existsSync() ||
+          (options.outputPath != null &&
+              File(options.outputPath!).existsSync())) {
+        throw StateError(
+            'Use new output/evidence paths; captures are immutable.');
+      }
+      await evidence.create(recursive: true);
+    }
 
     final outputFile = options.outputPath == null
         ? null
         : File(options.outputPath!).openWrite(mode: FileMode.writeOnly);
     final sink = outputFile ?? stdout;
     var emitted = 0;
+    var rejected = 0;
+    var attempted = 0;
 
     try {
       for (final productUrl in sitemapUrls) {
         if (!robots.isAllowed(productUrl)) {
           stderr.writeln('robots.txt skipped $productUrl');
+          rejected++;
           continue;
         }
 
+        await Future<void>.delayed(options.delay);
         final page = await fetchText(
           client: client,
           url: productUrl,
           userAgent: options.userAgent,
         );
+        attempted++;
+        final observedAt = DateTime.now().toUtc();
+        final receipt = {
+          'url': productUrl,
+          'observed_at': observedAt.toIso8601String(),
+          'body_hash_fnv1a64': stableHash(page),
+        };
+        if (evidence != null) {
+          await File('${evidence.path}/$attempted.html').writeAsString(page);
+          await File('${evidence.path}/$attempted.json')
+              .writeAsString(jsonEncode(receipt));
+        }
         final record = parseChedrauiProductPage(
           productUrl: productUrl,
           html: page,
+          observedAt: observedAt,
         );
 
         if (record == null) {
           stderr.writeln('No publishable price evidence found at $productUrl');
+          rejected++;
         } else {
+          (record['raw_payload'] as Map)['http_receipt'] = receipt;
           sink.writeln(jsonEncode(record));
           emitted++;
         }
@@ -66,19 +100,39 @@ Future<void> main(List<String> args) async {
         if (emitted >= options.limit) {
           break;
         }
-        await Future<void>.delayed(options.delay);
       }
     } finally {
       if (outputFile != null) {
         await outputFile.flush();
         await outputFile.close();
       }
+      if (evidence != null) {
+        await File('${evidence.path}/report.json').writeAsString(jsonEncode({
+          'attempted': attempted,
+          'accepted': emitted,
+          'rejected': rejected,
+          'complete':
+              attempted + rejected == sitemapUrls.length && rejected == 0,
+        }));
+      }
     }
 
     stderr.writeln('Generated $emitted Chedraui staging record(s).');
+    if (rejected > 0 || emitted == 0) exitCode = 2;
   } finally {
     client.close(force: true);
   }
+}
+
+List<String> readProductUrls(String path) {
+  final value = jsonDecode(File(path).readAsStringSync());
+  if (value is! List ||
+      value.isEmpty ||
+      value.any((url) => url is! String || !_looksLikeProductUrl(url))) {
+    throw FormatException(
+        'Expected a nonempty array of official Chedraui product URLs');
+  }
+  return value.cast<String>().toSet().toList();
 }
 
 Future<List<String>> discoverProductUrls({
@@ -130,13 +184,15 @@ Future<String> fetchText({
   required String userAgent,
 }) async {
   final request = await client.getUrl(Uri.parse(url));
+  request.followRedirects = false;
   request.headers
     ..set(HttpHeaders.userAgentHeader, userAgent)
     ..set(HttpHeaders.acceptHeader, 'text/html,application/xml;q=0.9,*/*;q=0.8')
     ..set(HttpHeaders.acceptEncodingHeader, 'gzip, deflate');
 
-  final response = await request.close();
-  final body = await utf8.decodeStream(response);
+  final response = await request.close().timeout(const Duration(seconds: 30));
+  final body =
+      await utf8.decodeStream(response).timeout(const Duration(seconds: 30));
 
   if (response.statusCode < 200 || response.statusCode >= 300) {
     throw HttpException(
@@ -159,84 +215,108 @@ List<String> extractXmlLocs(String xml) {
 Map<String, Object?>? parseChedrauiProductPage({
   required String productUrl,
   required String html,
+  DateTime? observedAt,
 }) {
   final productId = productUrlId(productUrl);
-  if (productId == null) {
+  if (productId == null || !_looksLikeProductUrl(productUrl)) {
     return null;
   }
-
-  final name = _firstJsonStringAfter(
-        html,
-        RegExp('"itemId":"$productId"'),
-        '"name"',
-      ) ??
-      _firstJsonString(
-        html,
-        RegExp(r'"productName"\s*:\s*"((?:\\.|[^"\\])*)"'),
-      );
-  final priceFromOffer = _firstNumberNear(
-    html,
-    RegExp('"sku=$productId[^"]*?[&?]price=(\\d+)"'),
-  );
-  final priceFromState = _firstNumberNear(
-    html,
-    RegExp(r'"Price"\s*:\s*([0-9]+(?:\.[0-9]+)?)'),
-  );
-  final price = priceFromOffer == null ? priceFromState : priceFromOffer / 100;
-  final availableQuantity = _firstInt(
-    html,
-    RegExp(r'"AvailableQuantity"\s*:\s*([0-9]+)'),
-  );
-  final imageUrl = _firstJsonString(
-    html,
-    RegExp(r'"imageUrl"\s*:\s*"((?:\\.|[^"\\])*)"'),
-  );
-  final priceValidUntil = _firstJsonString(
-    html,
-    RegExp(r'"PriceValidUntil"\s*:\s*"((?:\\.|[^"\\])*)"'),
-  );
-  final ean = _firstJsonStringAfter(
-    html,
-    RegExp('"itemId":"$productId"'),
-    '"ean"',
-  );
-
-  if (name == null || price == null || price <= 0) {
+  final products = <Map<String, dynamic>>[];
+  for (final script in RegExp(
+    r'''<script\b[^>]*type=["']application/ld\+json["'][^>]*>(.*?)</script>''',
+    caseSensitive: false,
+    dotAll: true,
+  ).allMatches(html)) {
+    try {
+      products.addAll(_jsonObjects(jsonDecode(script.group(1)!)).where((node) =>
+          node['@type'] == 'Product' &&
+          node['@id'] == productUrl &&
+          node['mpn']?.toString() == productId));
+    } on FormatException {
+      return null;
+    }
+  }
+  if (products.length != 1) return null;
+  final product = products.single;
+  final offers = _jsonObjects(product['offers'])
+      .where((node) => node['@type'] == 'Offer')
+      .toList();
+  if (offers.length != 1) return null;
+  final offer = offers.single;
+  final seller = offer['seller'];
+  if (offer['sku'] != product['sku'] ||
+      int.tryParse(product['sku']?.toString() ?? '') !=
+          int.tryParse(productId) ||
+      seller is! Map ||
+      seller['name'] != 'Chedraui' ||
+      offer['priceCurrency'] != 'MXN') {
     return null;
   }
-
-  final now = DateTime.now().toUtc().toIso8601String();
+  final price = double.tryParse(offer['price']?.toString() ?? '');
+  final name = product['name'];
+  final available = switch (offer['availability']) {
+    'http://schema.org/InStock' || 'https://schema.org/InStock' => true,
+    'http://schema.org/OutOfStock' || 'https://schema.org/OutOfStock' => false,
+    _ => null,
+  };
+  if (name is! String ||
+      name.trim().isEmpty ||
+      price == null ||
+      !price.isFinite ||
+      price <= 0 ||
+      available == null) {
+    return null;
+  }
+  final observation = (observedAt ?? DateTime.now()).toUtc();
+  final validUntil = offer['priceValidUntil'];
+  if (validUntil != null) {
+    final expiry = DateTime.tryParse(validUntil.toString());
+    if (expiry == null || !expiry.toUtc().isAfter(observation)) return null;
+  }
+  // Missing quantities and ambiguous multipacks require review.
+  if (!RegExp(r'\d+(?:[.,]\d+)?\s*(?:kg|g|gr|l|lt|ml|piezas?)\b',
+              caseSensitive: false)
+          .hasMatch(name) ||
+      RegExp(r'\b(?:pack|paquete|piezas?\s+de)\b|\d+\s*x\s*\d+',
+              caseSensitive: false)
+          .hasMatch(name)) {
+    return null;
+  }
+  final image = product['image'];
+  final imageUri = image is String ? Uri.tryParse(image) : null;
+  final imageUrl = imageUri?.scheme == 'https' &&
+          imageUri?.host == 'chedrauimx.vtexassets.com'
+      ? image
+      : null;
+  final now = observation.toIso8601String();
   final normalizedName = normalizeName(name);
   final presentation = inferPresentation(name);
   final rawPayload = <String, Object?>{
     'source': 'chedraui_product_page',
     'product_id': productId,
-    'ean': ean,
-    'available_quantity': availableQuantity,
-    'price_valid_until': priceValidUntil,
-    'price_evidence': priceFromOffer == null
-        ? 'embedded_vtex_state_price'
-        : 'embedded_add_to_cart_price',
+    'json_ld_product': product,
+    'price_evidence': 'sku_bound_json_ld_offer',
   };
 
   final record = <String, Object?>{
     'source': 'chedraui-mx',
     'store_brand': 'Chedraui',
     'store_slug': 'chedraui-online',
+    'price_scope': 'online',
     'source_product_name': name,
     'normalized_name': normalizedName,
     'category': 'Supermercado',
     'presentation': presentation,
     'price': price,
     'currency': 'MXN',
-    'available': availableQuantity == null ? true : availableQuantity > 0,
+    'available': available,
     'captured_at': now,
     'observed_at': now,
     'source_url': productUrl,
     'evidence_kind': 'product_page',
     'confidence_score': 0.90,
     'is_synthetic': false,
-    'review_status': 'pending',
+    'review_status': 'accepted',
     'store_product_url': productUrl,
     'image_url': imageUrl,
     'external_reference': productId,
@@ -255,9 +335,23 @@ Map<String, Object?>? parseChedrauiProductPage({
     record['source_url'],
     record['price'],
     record['available'],
+    record['observed_at'],
   ].join('|'));
 
   return record;
+}
+
+Iterable<Map<String, dynamic>> _jsonObjects(Object? value) sync* {
+  if (value is Map<String, dynamic>) {
+    yield value;
+    for (final child in value.values) {
+      yield* _jsonObjects(child);
+    }
+  } else if (value is List) {
+    for (final child in value) {
+      yield* _jsonObjects(child);
+    }
+  }
 }
 
 String? productUrlId(String url) {
@@ -266,52 +360,9 @@ String? productUrlId(String url) {
 }
 
 bool _looksLikeProductUrl(String url) {
-  return Uri.tryParse(url)?.host == 'www.chedraui.com.mx' &&
+  return Uri.tryParse(url)?.scheme == 'https' &&
+      Uri.tryParse(url)?.host == 'www.chedraui.com.mx' &&
       RegExp(r'-[0-9]+/p(?:$|[?#])').hasMatch(url);
-}
-
-String? _firstJsonString(String text, RegExp pattern) {
-  final match = pattern.firstMatch(text);
-  final value = match?.group(1);
-  if (value == null) {
-    return null;
-  }
-  return decodeJsonString(value);
-}
-
-String? _firstJsonStringAfter(String text, Pattern anchor, String key) {
-  final anchorMatch = anchor is RegExp
-      ? anchor.firstMatch(text)
-      : RegExp(RegExp.escape(anchor.toString())).firstMatch(text);
-  if (anchorMatch == null) {
-    return null;
-  }
-
-  final start = anchorMatch.start;
-  final end = start + 8000 > text.length ? text.length : start + 8000;
-  final window = text.substring(start, end);
-  final pattern = RegExp(
-    '${RegExp.escape(key)}\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"',
-  );
-  return _firstJsonString(window, pattern);
-}
-
-double? _firstNumberNear(String text, RegExp pattern) {
-  final match = pattern.firstMatch(text);
-  final value = match?.group(1);
-  if (value == null) {
-    return null;
-  }
-  return double.tryParse(value);
-}
-
-int? _firstInt(String text, RegExp pattern) {
-  final match = pattern.firstMatch(text);
-  final value = match?.group(1);
-  if (value == null) {
-    return null;
-  }
-  return int.tryParse(value);
 }
 
 String decodeJsonString(String value) {
@@ -502,6 +553,8 @@ class ScraperOptions {
     required this.limit,
     required this.delay,
     this.outputPath,
+    this.urlsPath,
+    this.evidenceDirectory,
     this.showHelp = false,
   });
 
@@ -511,6 +564,8 @@ class ScraperOptions {
   final int limit;
   final Duration delay;
   final String? outputPath;
+  final String? urlsPath;
+  final String? evidenceDirectory;
   final bool showHelp;
 
   static ScraperOptions parse(List<String> args) {
@@ -520,6 +575,8 @@ class ScraperOptions {
     var limit = 5;
     var delayMs = 1500;
     String? outputPath;
+    String? urlsPath;
+    String? evidenceDirectory;
 
     for (var index = 0; index < args.length; index++) {
       final arg = args[index];
@@ -556,6 +613,10 @@ class ScraperOptions {
           delayMs = int.parse(readValue());
         case '--out':
           outputPath = readValue();
+        case '--urls':
+          urlsPath = readValue();
+        case '--evidence-dir':
+          evidenceDirectory = readValue();
         default:
           throw ArgumentError('Unknown argument: $arg');
       }
@@ -575,6 +636,8 @@ class ScraperOptions {
       limit: limit,
       delay: Duration(milliseconds: delayMs),
       outputPath: outputPath,
+      urlsPath: urlsPath,
+      evidenceDirectory: evidenceDirectory,
     );
   }
 
@@ -584,6 +647,8 @@ Usage:
 
 Options:
   --sitemap <url>      Product sitemap or sitemap index URL.
+  --urls <path>        JSON array of reviewed product URLs instead of a sitemap.
+  --evidence-dir <dir> New directory for HTML and observation receipts.
   --robots <url>       robots.txt URL to enforce before fetching.
   --limit <n>          Number of product price records to emit. Default: 5.
   --delay-ms <n>       Delay between product page fetches. Default: 1500.

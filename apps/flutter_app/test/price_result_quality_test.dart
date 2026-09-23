@@ -17,6 +17,7 @@ PriceResult _localPrice({
     branchId: branchId,
     branchName: branchName,
     branchAddress: 'Dirección verificada',
+    presentation: '1 l',
     price: 499,
     currency: 'MXN',
     available: available,
@@ -71,6 +72,7 @@ void main() {
     const online = PriceResult(
       storeName: 'Tienda online',
       productName: 'Pintura blanca',
+      presentation: '1 l',
       price: 520,
       currency: 'MXN',
       available: true,
@@ -91,6 +93,7 @@ void main() {
     const online = PriceResult(
       storeName: 'Tienda online',
       productName: 'Pintura blanca',
+      presentation: '1 l',
       price: 520,
       currency: 'MXN',
       available: true,
