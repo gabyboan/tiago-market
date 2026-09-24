@@ -1,0 +1,87 @@
+name: Update Chedraui-Merco basket
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 11 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-chedraui-merco-basket
+  cancel-in-progress: false
+
+jobs:
+  update-basket:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/flutter_app
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter and Dart
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.7"
+          channel: stable
+          cache: true
+
+      - name: Install runtime dependencies
+        run: |
+          flutter pub get
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Validate database secret
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: test -n "$SUPABASE_DB_URL"
+
+      - name: Capture, validate, and publish complete basket
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          python3 tools/ingestion/python/daily_basket_update.py \
+            --manifest tools/ingestion/catalogs/chedraui_merco_basket.json \
+            --work-dir "$RUNNER_TEMP/tiago-basket-daily" \
+            --publish
+
+      - name: Summarize source and product status
+        if: always()
+        env:
+          DAILY_REPORT: ${{ runner.temp }}/tiago-basket-daily/daily-report.json
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          from pathlib import Path
+          path = Path(os.environ['DAILY_REPORT'])
+          print('## Chedraui–Merco daily update')
+          if not path.exists():
+              print('\nNo daily report was produced. Review the workflow logs.')
+              raise SystemExit(0)
+          report = json.loads(path.read_text())
+          print(f"\nStatus: **{report['status']}**. Published: **{report['published']}**.")
+          print('\n| Source | Exit code |')
+          print('|---|---:|')
+          for source, details in report['sources'].items():
+              print(f"| {source} | {details['exit_code']} |")
+          print('\n| Product | Source | Status | Reasons |')
+          print('|---|---|---|---|')
+          for item in report['products']:
+              reasons = ', '.join(item['reasons']) or '—'
+              print(f"| {item['label']} | {item['source']} | {item['status']} | {reasons} |")
+          PY
+
+      - name: Upload capture and review report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: chedraui-merco-daily-${{ github.run_id }}
+          path: ${{ runner.temp }}/tiago-basket-daily
+          if-no-files-found: warn
+          retention-days: 30
