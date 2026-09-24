@@ -1,0 +1,102 @@
+{
+  "reviewed_at": "2026-09-23T19:37:50.879285+00:00",
+  "scope": "Catálogos online Chedraui y Merco Monterrey, sin atribución local.",
+  "items": [
+    {
+      "canonical_variant_key": "reviewed:lala-fresca-entera-carton-1l",
+      "label": "Leche Lala fresca entera en cartón 1 L",
+      "brand": "Lala",
+      "category": "Leche",
+      "net_quantity": 1,
+      "unit": "l",
+      "pack_count": 1,
+      "match_basis": "Revisión de marca, variante, cantidad y unidad en ambas fichas oficiales; leche fresca entera en cartón confirmada por la imagen oficial de Merco. No se afirma coincidencia de GTIN.",
+      "listings": [
+        {
+          "source": "chedraui-mx",
+          "url": "https://www.chedraui.com.mx/leche-entera-lala-fresca-carton-1l-3012008/p",
+          "observed_name": "Leche Entera Lala Fresca Cartón 1L",
+          "observed_presentation": "1 l"
+        },
+        {
+          "source": "merco-mx",
+          "url": "https://adomicilio.merco.mx/p/leche-fresca-lala-entera-1-lto-10248783",
+          "observed_name": "Leche Fresca Lala Entera 1 Lto.",
+          "observed_presentation": "1 l"
+        }
+      ]
+    },
+    {
+      "canonical_variant_key": "reviewed:barilla-fideo-no0-200g",
+      "label": "Sopa Barilla fideo N° 0 200 g",
+      "brand": "Barilla",
+      "category": "Pastas",
+      "net_quantity": 200,
+      "unit": "g",
+      "pack_count": 1,
+      "match_basis": "Revisión de marca, variante, cantidad y unidad en ambas fichas oficiales; leche fresca entera en cartón confirmada por la imagen oficial de Merco. No se afirma coincidencia de GTIN.",
+      "listings": [
+        {
+          "source": "chedraui-mx",
+          "url": "https://www.chedraui.com.mx/sopa-de-fideo-barilla-n0-200g-3090448/p",
+          "observed_name": "Sopa de Fideo Barilla N.0 200g",
+          "observed_presentation": "200 g"
+        },
+        {
+          "source": "merco-mx",
+          "url": "https://adomicilio.merco.mx/p/pasta-barilla-para-sopa-de-fideo-n-0-200-g-10246078",
+          "observed_name": "Pasta Barilla Para Sopa de Fideo N° 0  200 g",
+          "observed_presentation": "200 g"
+        }
+      ]
+    },
+    {
+      "canonical_variant_key": "reviewed:barilla-codo-no2-200g",
+      "label": "Sopa Barilla codo N° 2 200 g",
+      "brand": "Barilla",
+      "category": "Pastas",
+      "net_quantity": 200,
+      "unit": "g",
+      "pack_count": 1,
+      "match_basis": "Revisión de marca, variante, cantidad y unidad en ambas fichas oficiales; leche fresca entera en cartón confirmada por la imagen oficial de Merco. No se afirma coincidencia de GTIN.",
+      "listings": [
+        {
+          "source": "chedraui-mx",
+          "url": "https://www.chedraui.com.mx/sopa-de-codo-barilla-no2-200g-3090451/p",
+          "observed_name": "Sopa de Codo Barilla No.2 200g",
+          "observed_presentation": "200 g"
+        },
+        {
+          "source": "merco-mx",
+          "url": "https://adomicilio.merco.mx/p/pasta-barilla-sopa-de-codo-no-2-200-g-10246080",
+          "observed_name": "Pasta Barilla Sopa de Codo No.2 200 g",
+          "observed_presentation": "200 g"
+        }
+      ]
+    },
+    {
+      "canonical_variant_key": "reviewed:verde-valle-super-extra-900g",
+      "label": "Arroz Verde Valle Súper Extra 900 g",
+      "brand": "Verde Valle",
+      "category": "Arroz",
+      "net_quantity": 900,
+      "unit": "g",
+      "pack_count": 1,
+      "match_basis": "Revisión de marca, variante, cantidad y unidad en ambas fichas oficiales; leche fresca entera en cartón confirmada por la imagen oficial de Merco. No se afirma coincidencia de GTIN.",
+      "listings": [
+        {
+          "source": "chedraui-mx",
+          "url": "https://www.chedraui.com.mx/arroz-verde-valle-super-extra-900g-3008380/p",
+          "observed_name": "Arroz Verde Valle Super Extra 900g",
+          "observed_presentation": "900 g"
+        },
+        {
+          "source": "merco-mx",
+          "url": "https://adomicilio.merco.mx/p/arroz-verde-valle-super-extra-900-g-10245671",
+          "observed_name": "Arroz Verde Valle Super Extra 900 g",
+          "observed_presentation": "900 g"
+        }
+      ]
+    }
+  ]
+}

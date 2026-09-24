@@ -53,14 +53,17 @@ Future<void> main(List<String> args) async {
         : File(options.outputPath!).openWrite(mode: FileMode.writeOnly);
     final sink = outputFile ?? stdout;
     var emitted = 0;
-    var rejected = 0;
+    final rejected = <Map<String, String>>[];
     var attempted = 0;
 
     try {
       for (final productUrl in sitemapUrls) {
         if (!robots.isAllowed(productUrl)) {
           stderr.writeln('robots.txt skipped $productUrl');
-          rejected++;
+          rejected.add({
+            'url': productUrl,
+            'reason': 'robots.txt disallows the product URL',
+          });
           continue;
         }
 
@@ -90,7 +93,10 @@ Future<void> main(List<String> args) async {
 
         if (record == null) {
           stderr.writeln('No publishable price evidence found at $productUrl');
-          rejected++;
+          rejected.add({
+            'url': productUrl,
+            'reason': 'SKU-bound product evidence is missing or changed',
+          });
         } else {
           (record['raw_payload'] as Map)['http_receipt'] = receipt;
           sink.writeln(jsonEncode(record));
@@ -111,14 +117,13 @@ Future<void> main(List<String> args) async {
           'attempted': attempted,
           'accepted': emitted,
           'rejected': rejected,
-          'complete':
-              attempted + rejected == sitemapUrls.length && rejected == 0,
+          'complete': attempted == sitemapUrls.length && rejected.isEmpty,
         }));
       }
     }
 
     stderr.writeln('Generated $emitted Chedraui staging record(s).');
-    if (rejected > 0 || emitted == 0) exitCode = 2;
+    if (rejected.isNotEmpty || emitted == 0) exitCode = 2;
   } finally {
     client.close(force: true);
   }
