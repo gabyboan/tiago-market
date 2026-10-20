@@ -78,6 +78,27 @@ npm run build
 Las variables `VITE_*` se incluyen en el JavaScript público. Usar únicamente
 una clave pública; jamás `service_role`, contraseñas ni tokens privados.
 
+## Demo sin servicios
+
+La [demo pública](https://gabyboan.github.io/tiago-market/) usa el cliente
+Flutter con ocho productos y dos comercios ficticios. No necesita Supabase,
+OAuth ni una base de datos para explorar búsqueda, comparación y listas.
+
+```bash
+cd apps/flutter_app
+flutter pub get
+python3 tools/build_portfolio_demo.py --base-href=/
+python3 -m http.server 8080 --directory build/portfolio-demo
+```
+
+Abrir `http://localhost:8080`. Para GitHub Pages, el script usa por defecto
+`--base-href=/tiago-market/`; el workflow `portfolio-demo.yml` realiza la
+publicación al actualizar el cliente en `main`.
+
+Los datos ficticios viven en `lib/src/demo/demo_market_api.dart`, separados del
+cliente de producción. La entrada `main_demo.dart` rechaza configuración de
+servicios; no pasar archivos de Dart defines al construir la demo.
+
 ## Base de datos
 
 Las migraciones están repartidas entre archivos históricos recuperados y

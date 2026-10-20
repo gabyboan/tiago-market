@@ -56,6 +56,7 @@ class SearchPageBody extends StatelessWidget {
         listenable: controller,
         builder: (context, _) => ShoppingListSheet(
           items: controller.shoppingItems,
+          demo: controller.usingDemo,
           onQuantityChanged: controller.updateShoppingItem,
           signedIn: controller.cartSignedIn,
           persistenceStatus: controller.cartStatus,
@@ -114,7 +115,7 @@ class SearchPageBody extends StatelessWidget {
               controller: controller.scrollController,
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
               children: [
-                const _SearchHero(),
+                _SearchHero(demo: controller.usingDemo),
                 const SizedBox(height: 24),
                 _SearchInputRow(
                   controller: controller,

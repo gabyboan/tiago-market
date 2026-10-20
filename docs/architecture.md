@@ -16,6 +16,17 @@ caché local por cuenta; el carrito invitado se mantiene separado.
 catálogo online mediante `online_prices_v2`. No comparte la navegación ni
 todas las funciones de Flutter.
 
+## Demo independiente
+
+`main_demo.dart` utiliza la misma aplicación e inyecta `DemoMarketApi` mediante
+el constructor de `TiagoMarketApp`. El catálogo vive en memoria, sin URLs de
+servicios ni credenciales. La demo no inicializa autenticación ni telemetría;
+un aviso permanente identifica productos, comercios y precios ficticios.
+
+La navegación de demo ofrece búsqueda, comparación, favoritos y carrito
+invitado. Desactiva ubicación y entrada de datos personales. Se construye como
+sitio estático separado y el pipeline lo publica en GitHub Pages.
+
 ## Captura y publicación
 
 Los conectores de `apps/flutter_app/tools/ingestion` se ejecutan fuera de los

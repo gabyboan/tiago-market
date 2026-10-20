@@ -15,6 +15,8 @@ class MarketApi {
   final RpcInvoker? _rpcInvoker;
   bool get _hasRpc => authEnabled || _rpcInvoker != null;
 
+  bool get isDemo => false;
+
   bool usedCache = false;
 
   Future<List<PriceResult>> compare(
@@ -199,7 +201,7 @@ class MarketApi {
           body: jsonEncode({
             'message': message.trim(),
             'user_id': userId,
-            'context': {'platform': 'flutter', 'app_version': '0.2.2'},
+            'context': {'platform': 'flutter', 'app_version': '0.2.6'},
           }),
         )
         .timeout(const Duration(seconds: 10));
