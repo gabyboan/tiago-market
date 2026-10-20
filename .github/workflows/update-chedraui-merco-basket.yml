@@ -24,6 +24,48 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Validate database secret
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          python3 - <<'PY'
+          import ipaddress
+          import os
+          import sys
+          from urllib.parse import unquote, urlsplit
+
+          message = ('::error::Configure SUPABASE_DB_URL with the complete Supabase '
+                     'Session pooler PostgreSQL URI, including username, password, '
+                     'remote host, and database. Do not paste only a password or a psql command.')
+          raw = os.environ.get('SUPABASE_DB_URL', '')
+          try:
+              url = urlsplit(raw)
+              host = (url.hostname or '').lower().rstrip('.')
+              valid = (raw == raw.strip() and not any(c.isspace() for c in raw)
+                       and url.scheme in ('postgres', 'postgresql')
+                       and host and url.username and url.password
+                       and url.path.lstrip('/') and not url.fragment)
+              valid = valid and host != 'localhost' and not host.endswith('.localhost')
+              valid = valid and not host.startswith('127.') and host != '0'
+              try:
+                  address = ipaddress.ip_address(host)
+                  valid = valid and not (address.is_loopback or address.is_unspecified)
+              except ValueError:
+                  pass
+              decoded = unquote(raw).lower()
+              placeholders = ('[password]', '<password>', 'your-password', 'your_password',
+                              'yourpassword', 'project-ref', 'project_ref', 'your-host',
+                              'your_host', 'your-database', 'your_database')
+              valid = valid and not any(value in decoded for value in placeholders)
+              if url.port is not None:
+                  valid = valid and 1 <= url.port <= 65535
+          except ValueError:
+              valid = False
+          if not valid:
+              sys.exit(message)
+          print('Database secret format is valid.')
+          PY
+
       - name: Set up Flutter and Dart
         uses: subosito/flutter-action@v2
         with:
@@ -36,11 +78,6 @@ jobs:
           flutter pub get
           sudo apt-get update
           sudo apt-get install --yes postgresql-client
-
-      - name: Validate database secret
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: test -n "$SUPABASE_DB_URL"
 
       - name: Capture, validate, and publish complete basket
         env:

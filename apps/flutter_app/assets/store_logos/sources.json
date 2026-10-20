@@ -1,0 +1,72 @@
+{
+  "chedraui": {
+    "source": "https://chedrauimx.vtexassets.com/arquivos/apple-touch-icon-57x57.png",
+    "size": [
+      57,
+      57
+    ]
+  },
+  "merco": {
+    "source": "https://merco.mx/images/Logos-Icons/Favicon.png",
+    "size": [
+      130,
+      130
+    ]
+  },
+  "arteli": {
+    "source": "https://arteli.vtexassets.com/arquivos/logo.png",
+    "size": [
+      256,
+      83
+    ]
+  },
+  "smart-final": {
+    "source": "https://www.smartnfinal.com.mx/wp-content/uploads/2017/09/cropped-smart-favicon-150x150.png",
+    "size": [
+      150,
+      150
+    ]
+  },
+  "home-depot": {
+    "source": "https://cdn.homedepot.com.mx/assets/img/logo_THD-favicon.png",
+    "size": [
+      64,
+      64
+    ]
+  },
+  "steren": {
+    "source": "https://www.steren.com.mx/media/favicon/stores/1/favicon.ico",
+    "size": [
+      48,
+      48
+    ]
+  },
+  "walmart": {
+    "source": "https://www.walmart.com.mx/favicon.ico",
+    "size": [
+      16,
+      16
+    ]
+  },
+  "bodega-aurrera": {
+    "source": "https://www.bodegaaurrera.com.mx/favicon.ico",
+    "size": [
+      150,
+      150
+    ]
+  },
+  "la-comer": {
+    "source": "https://www.lacomer.com.mx/favicon.ico",
+    "size": [
+      32,
+      32
+    ]
+  },
+  "city-market": {
+    "source": "https://www.citymarket.com.mx/images/city-market.png",
+    "size": [
+      256,
+      104
+    ]
+  }
+}

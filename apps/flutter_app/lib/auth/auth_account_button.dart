@@ -81,7 +81,7 @@ class GoogleAuthService {
 
   static Future<void> signOut() async {
     await Supabase.instance.client.auth.signOut();
-    if (!kIsWeb) await _googleSignIn.signOut();
+    if (!kIsWeb && _googleSignInInitialized) await _googleSignIn.signOut();
   }
 
   static Future<void> setRole(String role) async {

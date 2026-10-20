@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tiago_market_app/src/models/models.dart';
+import 'package:tiago_market_app/src/widgets/store_logo.dart';
 
 class FavoritesSheet extends StatefulWidget {
   const FavoritesSheet({
@@ -67,8 +68,16 @@ class _FavoritesSheetState extends State<FavoritesSheet> {
                             backgroundColor: const Color(0xFFE1E8E4),
                           ),
                     title: Text(item.productName),
-                    subtitle: Text(
-                      '${item.bestStoreName} · \$${item.bestPrice.toStringAsFixed(2)}',
+                    subtitle: Row(
+                      children: [
+                        StoreLogo(storeName: item.bestStoreName),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '${item.bestStoreName} · \$${item.bestPrice.toStringAsFixed(2)}',
+                          ),
+                        ),
+                      ],
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,

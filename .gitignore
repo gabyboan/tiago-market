@@ -29,3 +29,50 @@ test-results/
 
 # Client conversations, payment attachments and delivery artifacts
 /docs/cliente/
+
+# Local tools, editor settings and account configuration
+.aider-desk/
+.vscode/
+.idea/
+.mcp.json
+.npmrc
+.pypirc
+.netrc
+.DS_Store
+
+# OAuth downloads, service accounts and private keys
+**/client_secret*.json
+**/credentials.json
+**/*credentials*.json
+**/service-account*.json
+**/service_account*.json
+**/application_default_credentials.json
+**/*.local.xcconfig
+**/*.key
+**/id_rsa*
+**/id_ed25519*
+
+# Installers, captures, database exports and local archives
+*.apk
+*.aab
+*.ipa
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.dump
+*.sqlite
+*.sqlite3
+*.db
+coverage/
+
+# Public documentation is opt-in; operational reports stay on this machine.
+/docs/*
+!/docs/README.md
+!/docs/architecture.md
+!/docs/development.md
+!/docs/api-v1.md
+!/docs/github-publication.md
+/apps/flutter_app/docs/*
+!/apps/flutter_app/docs/envio-y-pagos.md

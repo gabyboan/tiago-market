@@ -4,9 +4,10 @@ import 'package:tiago_market_app/auth/auth_account_button.dart';
 import 'package:tiago_market_app/src/navigation/app_routes.dart';
 
 class RoleSelectionPage extends StatefulWidget {
-  const RoleSelectionPage({super.key, required this.user});
+  const RoleSelectionPage({super.key, this.user, this.onRoleSelected});
 
-  final User user;
+  final User? user;
+  final VoidCallback? onRoleSelected;
 
   @override
   State<RoleSelectionPage> createState() => _RoleSelectionPageState();
@@ -24,6 +25,10 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
     try {
       await GoogleAuthService.setRole(role);
       if (!mounted) return;
+      if (widget.onRoleSelected != null) {
+        widget.onRoleSelected!();
+        return;
+      }
       if (role == 'buyer') {
         Navigator.of(context).pushReplacementNamed(AppRoutes.search);
       } else {
@@ -38,10 +43,10 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
 
   @override
   Widget build(BuildContext context) {
-    final metadata = widget.user.userMetadata ?? const <String, dynamic>{};
+    final metadata = widget.user?.userMetadata ?? const <String, dynamic>{};
     final name = metadata['full_name'] as String? ??
         metadata['name'] as String? ??
-        widget.user.email ??
+        widget.user?.email ??
         'Hola';
     return Scaffold(
       appBar: AppBar(

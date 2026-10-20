@@ -28,6 +28,12 @@ Future<void> main(List<String> args) async {
     await File(options.reportOutPath!).writeAsString('$reportText\n');
     stderr.writeln('Wrote preflight report: ${options.reportOutPath}');
   }
+  if (options.jsonReportPath != null) {
+    await File(options.jsonReportPath!).writeAsString(
+      '${const JsonEncoder.withIndent('  ').convert(report.toJson())}\n',
+    );
+    stderr.writeln('Wrote JSON preflight report: ${options.jsonReportPath}');
+  }
 
   if (options.validateOnly) {
     if (report.rejected > 0) {
@@ -1281,6 +1287,28 @@ class PreflightReport {
 
   int get publishable => publishableRecords.length;
 
+  Map<String, dynamic> toJson() => {
+        'input_records': inputRecords,
+        'accepted': accepted,
+        'rejected': rejected,
+        'duplicate_input_records': duplicateInputRecords,
+        'publishable': publishable,
+        'rejected_records': [
+          for (final record in rejectedRecords)
+            {
+              'line': record.lineNumber,
+              'source': record.source,
+              'branch': record.branch,
+              'category': record.category,
+              'reasons': [
+                for (final issue in record.issues)
+                  {'code': issue.code, 'message': issue.message},
+              ],
+            },
+        ],
+        'publishable_records': publishableRecords,
+      };
+
   String toHumanReadable() {
     final buffer = StringBuffer()
       ..writeln('Preflight NDJSON')
@@ -1345,6 +1373,7 @@ class StageOptions {
     required this.runSource,
     this.sqlOutPath,
     this.reportOutPath,
+    this.jsonReportPath,
     this.execute = false,
     this.validateOnly = false,
     this.allowPartial = false,
@@ -1355,6 +1384,7 @@ class StageOptions {
   final String runSource;
   final String? sqlOutPath;
   final String? reportOutPath;
+  final String? jsonReportPath;
   final bool execute;
   final bool validateOnly;
   final bool allowPartial;
@@ -1365,6 +1395,7 @@ class StageOptions {
     var runSource = 'manual-ingestion';
     String? sqlOutPath;
     String? reportOutPath;
+    String? jsonReportPath;
     var execute = false;
     var validateOnly = false;
     var allowPartial = false;
@@ -1377,6 +1408,7 @@ class StageOptions {
           runSource: runSource,
           sqlOutPath: sqlOutPath,
           reportOutPath: reportOutPath,
+          jsonReportPath: jsonReportPath,
           execute: execute,
           validateOnly: validateOnly,
           allowPartial: allowPartial,
@@ -1401,6 +1433,8 @@ class StageOptions {
           sqlOutPath = readValue();
         case '--report-out':
           reportOutPath = readValue();
+        case '--json-report':
+          jsonReportPath = readValue();
         case '--execute':
           execute = true;
         case '--validate-only':
@@ -1427,6 +1461,7 @@ class StageOptions {
       runSource: runSource,
       sqlOutPath: sqlOutPath,
       reportOutPath: reportOutPath,
+      jsonReportPath: jsonReportPath,
       execute: execute,
       validateOnly: validateOnly,
       allowPartial: allowPartial,
@@ -1442,6 +1477,7 @@ Options:
   --run-source <name>  scrape_runs.source value. Default: manual-ingestion.
   --sql-out <path>     Write generated SQL to this path.
   --report-out <path>  Also write the human-readable preflight report.
+  --json-report <path> Also write the machine-readable preflight report.
   --validate-only      Validate and report without generating SQL.
   --preflight          Alias for --validate-only.
   --allow-partial      Generate SQL only for accepted records when some reject.

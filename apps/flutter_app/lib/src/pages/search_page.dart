@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tiago_market_app/auth/auth_account_button.dart';
 import 'package:tiago_market_app/src/config.dart';
@@ -19,6 +19,9 @@ class SearchPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (Provider.of<local.SearchController?>(context, listen: false) != null) {
+      return const SearchPageBody();
+    }
     return ChangeNotifierProvider<local.SearchController>(
       create: (_) => local.SearchController(),
       child: const SearchPageBody(),
@@ -49,9 +52,15 @@ class SearchPageBody extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => ShoppingListSheet(
-        items: controller.shoppingItems,
-        onQuantityChanged: controller.updateShoppingItem,
+      builder: (context) => ListenableBuilder(
+        listenable: controller,
+        builder: (context, _) => ShoppingListSheet(
+          items: controller.shoppingItems,
+          onQuantityChanged: controller.updateShoppingItem,
+          signedIn: controller.cartSignedIn,
+          persistenceStatus: controller.cartStatus,
+          onRetrySync: controller.retryCartSync,
+        ),
       ),
     );
   }

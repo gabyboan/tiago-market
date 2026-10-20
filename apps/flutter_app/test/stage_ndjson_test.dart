@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import '../tools/ingestion/bin/stage_ndjson.dart' as stage;
@@ -90,6 +93,58 @@ void main() {
   });
 
   group('preflight', () {
+    test('serializes validation, parsing, dedupe and unchanged payloads', () {
+      final record = validRecord();
+      final invalidRecord = validRecord()..['price'] = 0;
+      final report = stage.buildPreflightReport(
+        stage.NdjsonInput(
+          records: [
+            stage.InputRecord(lineNumber: 1, value: record),
+            stage.InputRecord(
+              lineNumber: 2,
+              value: Map<String, dynamic>.from(record),
+            ),
+            stage.InputRecord(lineNumber: 4, value: invalidRecord),
+          ],
+          parseErrors: const ['Line 3 is not a JSON object.'],
+          inputRecords: 4,
+        ),
+      );
+
+      final json = jsonDecode(jsonEncode(report.toJson()));
+      expect(json, {
+        'input_records': 4,
+        'accepted': 2,
+        'rejected': 2,
+        'duplicate_input_records': 1,
+        'publishable': 1,
+        'rejected_records': [
+          {
+            'line': 3,
+            'source': '<unparsed>',
+            'branch': '<unparsed>',
+            'category': '<unparsed>',
+            'reasons': [
+              {
+                'code': 'not_json_object',
+                'message': 'Line 3 is not a JSON object.',
+              },
+            ],
+          },
+          {
+            'line': 4,
+            'source': record['source'],
+            'branch': record['branch_external_key'],
+            'category': record['category'],
+            'reasons': [
+              {'code': 'invalid_price', 'message': 'has invalid price: 0'},
+            ],
+          },
+        ],
+        'publishable_records': [record],
+      });
+    });
+
     test('deduplicates source and content hash without rewriting text', () {
       final record = validRecord();
       final report = stage.buildPreflightReport(
@@ -123,6 +178,73 @@ void main() {
 
       final codes = stage.validateRecord(record).map((issue) => issue.code);
       expect(codes, containsAll(['unknown_evidence', 'invalid_captured_at']));
+    });
+  });
+
+  group('JSON report option', () {
+    test('coexists with existing report, SQL and partial flags', () {
+      final options = stage.StageOptions.parse([
+        '--input',
+        'input.ndjson',
+        '--json-report',
+        'report.json',
+        '--report-out',
+        'report.txt',
+        '--sql-out',
+        'stage.sql',
+        '--allow-partial',
+      ]);
+
+      expect(options.jsonReportPath, 'report.json');
+      expect(options.reportOutPath, 'report.txt');
+      expect(options.sqlOutPath, 'stage.sql');
+      expect(options.allowPartial, isTrue);
+      expect(options.execute, isFalse);
+      expect(options.validateOnly, isFalse);
+      expect(
+          stage.StageOptions.parse(['--input', 'input.ndjson']).jsonReportPath,
+          isNull);
+      expect(
+        () => stage.StageOptions.parse(
+            ['--input', 'input.ndjson', '--json-report']),
+        throwsArgumentError,
+      );
+    });
+
+    test('writes JSON before validate-only returns for rejected input',
+        () async {
+      final directory = await Directory.systemTemp.createTemp('stage_report_');
+      final originalExitCode = exitCode;
+      addTearDown(() async {
+        exitCode = originalExitCode;
+        await directory.delete(recursive: true);
+      });
+      final input = File('${directory.path}/input.ndjson');
+      final output = File('${directory.path}/report.json');
+      final sql = File('${directory.path}/stage.sql');
+      final record = validRecord();
+      await input.writeAsString('${jsonEncode(record)}\ninvalid json\n');
+
+      await stage.main([
+        '--input',
+        input.path,
+        '--json-report',
+        output.path,
+        '--sql-out',
+        sql.path,
+        '--validate-only',
+      ]);
+
+      final json = jsonDecode(await output.readAsString());
+      expect(exitCode, 2);
+      expect(json['input_records'], 2);
+      expect(json['accepted'], 1);
+      expect(json['rejected'], 1);
+      expect(json['publishable_records'], [record]);
+      expect(json['rejected_records'].single['line'], 2);
+      expect(json['rejected_records'].single['reasons'].single['code'],
+          'invalid_json');
+      expect(await sql.exists(), isFalse);
     });
   });
 }

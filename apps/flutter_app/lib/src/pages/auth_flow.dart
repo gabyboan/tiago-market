@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tiago_market_app/src/config.dart';
-import 'package:tiago_market_app/src/navigation/app_routes.dart';
+import 'package:tiago_market_app/src/pages/business_coming_soon.dart';
+import 'package:tiago_market_app/src/pages/role_selection.dart';
+import 'package:tiago_market_app/src/pages/search_page.dart';
 import 'package:tiago_market_app/src/pages/welcome_page.dart';
 import 'package:tiago_market_app/src/widgets/session_loading_page.dart';
 
@@ -18,27 +20,28 @@ class _AuthFlowGateState extends State<AuthFlowGate> {
   StreamSubscription<AuthState>? _authSubscription;
   Timer? _minimumLoadingTimer;
   User? _user;
-  bool _checkingSession = authEnabled;
   bool _minimumLoadingFinished = !authEnabled;
-  bool _navigationScheduled = false;
+  bool _guest = false;
 
   @override
   void initState() {
     super.initState();
     if (!authEnabled) return;
     final auth = Supabase.instance.client.auth;
-    _user = auth.currentSession?.user;
-    _checkingSession = false;
+    _user = auth.currentUser;
     _minimumLoadingTimer = Timer(const Duration(milliseconds: 900), () {
-      if (!mounted) return;
-      setState(() => _minimumLoadingFinished = true);
+      if (mounted) setState(() => _minimumLoadingFinished = true);
     });
+    // Stay mounted during guest browsing, login, role changes and logout.
     _authSubscription = auth.onAuthStateChange.listen((event) {
       if (!mounted) return;
       setState(() {
         _user = event.session?.user;
-        _checkingSession = false;
+        if (event.event == AuthChangeEvent.signedOut) _guest = false;
       });
+      if (event.event == AuthChangeEvent.signedOut) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     });
   }
 
@@ -51,39 +54,25 @@ class _AuthFlowGateState extends State<AuthFlowGate> {
 
   @override
   Widget build(BuildContext context) {
-    if (_checkingSession || !_minimumLoadingFinished) {
+    if (!_minimumLoadingFinished) {
       return SessionLoadingPage(returningUser: _user != null);
     }
-
-    if (_navigationScheduled) {
-      return const SizedBox.shrink();
-    }
-
     final user = _user;
-    // Keep the auth listener mounted while Google sign-in is in progress.
-    if (user == null) return const WelcomePage();
-
-    final targetRoute = (user.userMetadata?['role'] as String?) == 'buyer'
-        ? AppRoutes.search
-        : (user.userMetadata?['role'] as String?) == 'seller'
-            ? AppRoutes.sellerComingSoon
-            : AppRoutes.roleSelection;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      setState(() {
-        _navigationScheduled = true;
-      });
-      if (targetRoute == AppRoutes.roleSelection) {
-        Navigator.of(context).pushReplacementNamed(
-          targetRoute,
-          arguments: user,
-        );
-      } else {
-        Navigator.of(context).pushReplacementNamed(targetRoute);
-      }
-    });
-
-    return const SizedBox.shrink();
+    if (user == null) {
+      return _guest
+          ? const SearchPage()
+          : WelcomePage(onContinueAsGuest: () => setState(() => _guest = true));
+    }
+    final role = user.userMetadata?['role'];
+    if (role == 'buyer') return const SearchPage();
+    if (role == 'seller') return const BusinessComingSoonPage();
+    return RoleSelectionPage(
+      user: user,
+      onRoleSelected: () {
+        if (mounted) {
+          setState(() => _user = Supabase.instance.client.auth.currentUser);
+        }
+      },
+    );
   }
 }

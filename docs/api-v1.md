@@ -1,6 +1,8 @@
-# API v1 para Flutter
+# Contrato HTTP de la API Node
 
-La aplicación Flutter debe consumir únicamente rutas bajo `/api/v1`.
+Este contrato describe el servicio Express de `src/api/server.ts`, bajo
+`/api/v1`. El cliente Flutter actual consulta precios mediante RPC de Supabase;
+este documento no describe esas RPC ni la Edge Function histórica.
 
 ## Formato de respuesta
 
@@ -129,8 +131,10 @@ Lista `mock`, `profeco`, `walmart`, `soriana`, `chedraui` y
 `bodega_aurrera`. Cada fuente informa `enabled`, `mode`, motivo cuando aplica,
 `latest_snapshot_at` y `total_snapshots`.
 
-PROFECO QQP es la primera fuente real (`live`). Walmart y Soriana directos
-siguen desactivados hasta validar una fuente legal y técnicamente estable.
+Los estados describen la configuración de los conectores Node. Un conector
+habilitado o sus observaciones históricas no garantizan que la fuente siga
+disponible o tenga datos recientes. Los conectores Dart/Python se documentan
+por separado en la [guía de ingesta](../apps/flutter_app/tools/ingestion/README.md).
 
 ## Freshness
 
@@ -146,10 +150,11 @@ siguen desactivados hasta validar una fuente legal y técnicamente estable.
 - `DATABASE_ERROR`: error consultando datos.
 - `INTERNAL_ERROR`: error inesperado.
 
-## Reglas para Flutter
+## Reglas para consumidores
 
-- No almacenar ni incluir claves de Supabase.
-- No consultar Supabase directamente.
+- No incluir claves privilegiadas de Supabase ni contraseñas de base de datos.
+- Los consumidores HTTP usan este contrato; las RPC públicas de Supabase tienen
+  contratos independientes y utilizan una clave pública.
 - No ejecutar scraping.
 - Mostrar siempre `captured_at`, fuente y freshness junto al precio.
 - Advertir al usuario cuando `freshness` sea `old`.

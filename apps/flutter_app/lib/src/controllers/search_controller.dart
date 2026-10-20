@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tiago_market_app/src/config.dart';
 import 'package:tiago_market_app/src/models/models.dart';
 import 'package:tiago_market_app/src/services/market_api.dart';
@@ -9,9 +10,15 @@ import 'package:tiago_market_app/src/services/shopping_list_storage.dart';
 import 'package:tiago_market_app/src/services/favorite_storage.dart';
 import 'package:tiago_market_app/src/services/search_history_storage.dart';
 
-class SearchController extends ChangeNotifier {
-  SearchController({MarketApi? api, bool? loadOnStart})
-      : _api = api ?? MarketApi() {
+class SearchController extends ChangeNotifier with WidgetsBindingObserver {
+  SearchController(
+      {MarketApi? api, bool? loadOnStart, ShoppingListStorage? cart})
+      : _api = api ?? MarketApi(),
+        _cart = cart ??
+            ShoppingListStorage(
+                backend: authEnabled
+                    ? SupabaseCartBackend(Supabase.instance.client)
+                    : null) {
     _attachScrollListener();
     _loadShoppingList();
     _loadFavorites();
@@ -23,6 +30,12 @@ class SearchController extends ChangeNotifier {
   }
 
   final MarketApi _api;
+  final ShoppingListStorage _cart;
+  StreamSubscription<AuthState>? _cartAuthSubscription;
+  String? _cartUserId;
+  String get cartStatus => _cart.status;
+  bool get cartSignedIn => _cart.signedIn;
+  Future<void> retryCartSync() => _cart.synchronize();
 
   final TextEditingController queryController = TextEditingController();
   final ScrollController scrollController = ScrollController();
@@ -43,7 +56,7 @@ class SearchController extends ChangeNotifier {
   String? error;
   String? localEmptyMessage;
   int nearbyBranches = 0;
-  List<ShoppingItem> shoppingItems = const [];
+  List<ShoppingItem> get shoppingItems => _cart.items;
   List<FavoriteItem> favorites = const [];
   List<String> searchHistory = const [];
   List<ProductCategory> categories = const [];
@@ -125,10 +138,25 @@ class SearchController extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadShoppingList() async {
-    final items = await ShoppingListStorage.load();
-    shoppingItems = items;
-    notifyListeners();
+  void _loadShoppingList() {
+    _cart.addListener(notifyListeners);
+    WidgetsBinding.instance.addObserver(this);
+    if (!authEnabled) return;
+    final auth = Supabase.instance.client.auth;
+    _cartUserId = auth.currentUser?.id;
+    unawaited(_cart.selectAccount(_cartUserId));
+    _cartAuthSubscription = auth.onAuthStateChange.listen((event) {
+      final userId = event.session?.user.id;
+      if (userId == _cartUserId) return;
+      _cartUserId = userId;
+      unawaited(_cart.selectAccount(userId));
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_cart.synchronize());
+    if (state == AppLifecycleState.detached) _cart.clearGuest();
   }
 
   Future<void> _loadFavorites() async {
@@ -202,29 +230,24 @@ class SearchController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addFavoriteToShoppingList(FavoriteItem favoriteItem) async {
-    final existingIndex = shoppingItems.indexWhere(
-      (item) => item.comparisonKey == favoriteItem.comparisonKey,
-    );
-    final items = [...shoppingItems];
-    if (existingIndex >= 0) {
-      items[existingIndex] = items[existingIndex].copyWith(
-        quantity: items[existingIndex].quantity + 1,
-      );
-    } else {
-      items.add(
-        ShoppingItem(
-          comparisonKey: favoriteItem.comparisonKey,
-          productName: favoriteItem.productName,
-          quantity: 1,
-          prices: [favoriteItem.toBestPriceResult()],
-        ),
-      );
-    }
-    await ShoppingListStorage.save(items);
-    shoppingItems = items;
-    notifyListeners();
-  }
+  Future<void> addFavoriteToShoppingList(FavoriteItem favoriteItem) =>
+      _cart.change((items) {
+        final index = items.indexWhere(
+          (item) => item.comparisonKey == favoriteItem.comparisonKey,
+        );
+        if (index >= 0) {
+          items[index] =
+              items[index].copyWith(quantity: items[index].quantity + 1);
+        } else {
+          items.add(ShoppingItem(
+            comparisonKey: favoriteItem.comparisonKey,
+            productName: favoriteItem.productName,
+            quantity: 1,
+            prices: [favoriteItem.toBestPriceResult()],
+          ));
+        }
+        return items;
+      });
 
   Future<void> search({
     String? quickQuery,
@@ -400,50 +423,48 @@ class SearchController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addToShoppingList(ProductComparisonGroup group) async {
-    final existingIndex = shoppingItems.indexWhere(
-      (item) => item.comparisonKey == group.comparisonKey,
-    );
-    final items = [...shoppingItems];
-    if (existingIndex >= 0) {
-      items[existingIndex] = items[existingIndex].copyWith(
-        quantity: items[existingIndex].quantity + 1,
-        prices: group.prices,
-      );
-    } else {
-      items.add(
-        ShoppingItem(
-          comparisonKey: group.comparisonKey,
-          productName: group.productName,
-          quantity: 1,
-          prices: group.prices,
-        ),
-      );
-    }
+  Future<void> addToShoppingList(ProductComparisonGroup group) =>
+      _cart.change((items) {
+        final index = items.indexWhere(
+          (item) => item.comparisonKey == group.comparisonKey,
+        );
+        if (index >= 0) {
+          items[index] = items[index].copyWith(
+            quantity: items[index].quantity + 1,
+            prices: group.prices,
+          );
+        } else {
+          items.add(ShoppingItem(
+            comparisonKey: group.comparisonKey,
+            productName: group.productName,
+            quantity: 1,
+            prices: group.prices,
+          ));
+        }
+        return items;
+      });
 
-    await ShoppingListStorage.save(items);
-    shoppingItems = items;
-    notifyListeners();
-  }
-
-  Future<void> updateShoppingItem(ShoppingItem item, int quantity) async {
-    final items = [...shoppingItems];
-    final index =
-        items.indexWhere((value) => value.comparisonKey == item.comparisonKey);
-    if (index < 0) return;
-    if (quantity <= 0) {
-      items.removeAt(index);
-    } else {
-      items[index] = item.copyWith(quantity: quantity);
-    }
-    await ShoppingListStorage.save(items);
-    shoppingItems = items;
-    notifyListeners();
-  }
+  Future<void> updateShoppingItem(ShoppingItem item, int quantity) =>
+      _cart.change((items) {
+        final index = items.indexWhere(
+          (value) => value.comparisonKey == item.comparisonKey,
+        );
+        if (index < 0) return items;
+        if (quantity <= 0) {
+          items.removeAt(index);
+        } else {
+          items[index] = items[index].copyWith(quantity: quantity);
+        }
+        return items;
+      });
 
   @override
   void dispose() {
     _disposed = true;
+    _cartAuthSubscription?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _cart.removeListener(notifyListeners);
+    _cart.dispose();
     _requestId++;
     queryController.dispose();
     scrollController.dispose();

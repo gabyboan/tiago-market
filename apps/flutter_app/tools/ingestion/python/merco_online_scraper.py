@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Capture a bounded sample of Merco Monterrey's public online product pages.
+"""Capture a bounded catalog of Merco Monterrey's public online product pages.
 
 Produces stage_ndjson.dart input and immutable HTTP evidence; never publishes.
 No account, branch selection, cart, automatic retries or access challenges.
 """
 import argparse
+from collections import Counter
 from datetime import datetime, timezone
 import hashlib
 from html import unescape
@@ -41,6 +42,19 @@ def product_url(url):
             and re.fullmatch(r'/p/[a-z0-9-]+-\d+', parsed.path) is not None)
 
 
+def reviewed_urls(urls, limit):
+    """Preserve known URLs and avoid fetching the same external SKU twice."""
+    if not 1 <= limit <= 300:
+        raise ValueError('limit must be 1..300')
+    if not isinstance(urls, list) or not urls or any(
+            not isinstance(url, str) or not product_url(url) for url in urls):
+        raise ValueError('Expected a nonempty JSON array of official Merco product URLs')
+    unique = {}
+    for url in urls:
+        unique.setdefault(url.rsplit('-', 1)[-1], url)
+    return list(unique.values())[:limit]
+
+
 def parse_product(html, url, observed_at, response_sha256):
     if not product_url(url):
         raise ValueError('Unexpected product URL')
@@ -65,8 +79,11 @@ def parse_product(html, url, observed_at, response_sha256):
     if not math.isfinite(price) or not 0 < price < 1000000 or offer.get('priceCurrency') != 'MXN':
         raise ValueError('Invalid MXN price')
     availability = offer.get('availability')
-    if availability not in ('InStock', 'https://schema.org/InStock', 'http://schema.org/InStock'):
+    in_stock = ('InStock', 'https://schema.org/InStock', 'http://schema.org/InStock')
+    out_of_stock = ('OutOfStock', 'https://schema.org/OutOfStock', 'http://schema.org/OutOfStock')
+    if availability not in in_stock + out_of_stock:
         raise ValueError('Availability not confirmed')
+    available = availability in in_stock
     valid_until = offer.get('priceValidUntil')
     if valid_until:
         expiry = valid_until
@@ -80,6 +97,8 @@ def parse_product(html, url, observed_at, response_sha256):
     # Merco spells units as Lto., Lt, Gr and Grs. Preserve the pack text.
     unit_name = re.sub(r'\b(lto?s?|litros?)\b\.?', 'l', name, flags=re.I)
     unit_name = re.sub(r'\b(grs?|gramos?)\b\.?', 'g', unit_name, flags=re.I)
+    if len(re.findall(r'\b\d+(?:[.,]\d+)?\s*(?:kg|ml|g|l)\b', unit_name, re.I)) > 1:
+        raise ValueError('Ambiguous combined presentation')
     pack = presentation(unit_name, '')
     if re.search(r'\b(?:pack|paquete|c/|\d+\s*(?:x|pzas?))', unit_name, re.I) and not re.search(r'\d+\s*(?:x|de)\s*\d+', pack, re.I):
         raise ValueError('Ambiguous multipack presentation')
@@ -89,8 +108,11 @@ def parse_product(html, url, observed_at, response_sha256):
     if not categories or not isinstance(categories[-1], str):
         raise ValueError('Missing official category')
     image = product.get('image')
-    if not (isinstance(image, str) and image.startswith('https://res.cloudinary.com/riqra/image/upload/')
-            and '/merco-monterrey/products/' in image):
+    if not (isinstance(image, str) and urlparse(image).scheme == 'https'
+            and urlparse(image).netloc == 'res.cloudinary.com'
+            and urlparse(image).path.startswith('/riqra/image/upload/')
+            and '/merco-monterrey/products/' in urlparse(image).path
+            and not urlparse(image).query and not urlparse(image).fragment):
         image = None
     normalized = ''.join(c for c in unicodedata.normalize('NFD', name.lower())
                          if unicodedata.category(c) != 'Mn')
@@ -99,7 +121,7 @@ def parse_product(html, url, observed_at, response_sha256):
         'store_slug': 'merco-monterrey-online', 'price_scope': 'online',
         'source_product_name': name, 'normalized_name': normalized,
         'category': categories[-1], 'presentation': pack,
-        'price': price, 'currency': 'MXN', 'available': True,
+        'price': price, 'currency': 'MXN', 'available': available,
         'captured_at': observed_at, 'observed_at': observed_at,
         'source_url': url, 'store_product_url': url, 'external_reference': sku,
         'image_url': image, 'evidence_kind': 'product_page', 'confidence_score': 0.90,
@@ -110,7 +132,7 @@ def parse_product(html, url, observed_at, response_sha256):
                         'capture_context': 'Public Merco Monterrey online catalog; no selected branch'},
     }
     # A replay is idempotent; a new observation refreshes unchanged prices.
-    identity = [SOURCE, url, price, True, observed_at]
+    identity = [SOURCE, url, price, available, observed_at]
     row['content_hash'] = hashlib.sha256(json.dumps(identity).encode()).hexdigest()
     return row
 
@@ -129,19 +151,24 @@ class Capture:
     def get(self, url):
         time.sleep(max(0, self.last + self.delay - time.monotonic()))
         self.last = time.monotonic()
+        self.count += 1
+        prefix = self.folder / f'request-{self.count:03}'
         try:
             response = self.opener.open(Request(url, headers={'User-Agent': UA}), timeout=25)
         except HTTPError as error:
             response = error
+        except OSError as error:
+            receipt = {'url': url, 'status': None, 'error': str(error),
+                       'observed_at': datetime.now(timezone.utc).isoformat()}
+            prefix.with_suffix('.json').write_text(json.dumps(receipt, indent=2))
+            raise
         with response:
             body = response.read(4 * 1024 * 1024 + 1)
             status = response.status
             content_type = response.headers.get('Content-Type', '')
-        self.count += 1
         receipt = {'url': url, 'status': status, 'content_type': content_type,
                    'observed_at': datetime.now(timezone.utc).isoformat(),
                    'sha256': hashlib.sha256(body).hexdigest(), 'bytes': len(body)}
-        prefix = self.folder / f'request-{self.count:03}'
         prefix.with_suffix('.json').write_text(json.dumps(receipt, indent=2))
         prefix.with_suffix('.body').write_bytes(body)
         if status != 200 or len(body) > 4 * 1024 * 1024:
@@ -153,23 +180,24 @@ class Capture:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--urls', type=Path, help='JSON array of official product URLs; defaults to six reviewed URLs')
+    parser.add_argument('--urls', type=Path, help='JSON array of known official product URLs; defaults to six reviewed URLs')
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--limit', type=int, default=6)
     parser.add_argument('--delay-ms', type=int, default=5000)
     args = parser.parse_args()
-    if not 1 <= args.limit <= 20 or args.delay_ms < 0:
-        parser.error('limit must be 1..20; delay must be nonnegative')
-    urls = json.loads(args.urls.read_text()) if args.urls else DEFAULT_URLS
-    if not isinstance(urls, list) or not urls or any(not isinstance(u, str) or not product_url(u) for u in urls):
-        parser.error('Expected a nonempty JSON array of official Merco product URLs')
-    urls = list(dict.fromkeys(urls))[:args.limit]
+    if args.delay_ms < 0:
+        parser.error('delay must be nonnegative')
+    try:
+        urls = reviewed_urls(json.loads(args.urls.read_text()) if args.urls else DEFAULT_URLS, args.limit)
+    except (ValueError, OSError) as error:
+        parser.error(str(error))
     folder = Path(str(args.out) + '.evidence')
     if args.out.exists() or folder.exists():
         parser.error('Output or evidence already exists; use a new path')
     folder.mkdir(parents=True)
     capture = Capture(folder, args.delay_ms / 1000)
     rows, rejected, failure = [], [], None
+    attempted = 0
     try:
         robots, _ = capture.get(ORIGIN + '/robots.txt')
         if '<html' in robots.lower() or 'user-agent:' not in robots.lower():
@@ -180,6 +208,7 @@ def main():
         for url in urls:
             if not rules.can_fetch(UA, url):
                 raise RuntimeError('robots.txt disallows ' + url)
+            attempted += 1
             html, receipt = capture.get(url)
             try:
                 if 'text/html' not in receipt['content_type']:
@@ -194,7 +223,11 @@ def main():
     finally:
         args.out.write_text(''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in rows))
         report = {'source': SOURCE, 'accepted': len(rows), 'rejected': rejected,
-                  'failure': failure, 'requests': capture.count, 'price_scope': 'online'}
+                  'failure': failure, 'requests': capture.count, 'price_scope': 'online',
+                  'target': len(urls), 'target_reached': len(rows) == len(urls),
+                  'attempted_product_pages': attempted, 'requested_product_pages': len(urls),
+                  'categories': dict(Counter(row['category'] for row in rows)),
+                  'duplicate_rows': len(rows) - len({row['external_reference'] for row in rows})}
         (folder / 'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
         print(json.dumps(report, ensure_ascii=False), flush=True)
     if failure or rejected or not rows:

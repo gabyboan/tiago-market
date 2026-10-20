@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../tools/ingestion/bin/chedraui_sitemap_scraper.dart' as scraper;
@@ -78,6 +80,69 @@ void main() {
       expect(parse(product()..['name'] = 'Leche 6 piezas de 1L'), isNull);
     });
 
+    test('rejects combined presentations instead of taking first quantity', () {
+      for (final name in [
+        'Fixture shampoo 1900ml+100ml',
+        'Fixture leche 1L + 250 ml',
+        'Fixture shampoo 1900 ml acondicionador 100 ml',
+        'Fixture alimento 1 kg + 100 gramos',
+      ]) {
+        expect(parse(product()..['name'] = name), isNull, reason: name);
+      }
+    });
+
+    test('HTTP failure counts attempted PDP and preserves prior NDJSON',
+        () async {
+      final directory =
+          Directory.systemTemp.createTempSync('chedraui-fixture-');
+      addTearDown(() => directory.deleteSync(recursive: true));
+      final second = 'https://www.chedraui.com.mx/fixture-arroz-3012009/p';
+      final third = 'https://www.chedraui.com.mx/fixture-arroz-3012010/p';
+      final urls = File('${directory.path}/urls.json')
+        ..writeAsStringSync(jsonEncode([url, second, third]));
+      final output = File('${directory.path}/capture.ndjson');
+      final evidence = '${directory.path}/evidence';
+      final node = product();
+      (node['offers']['offers'][0] as Map).remove('priceValidUntil');
+      final client = _FixtureClient({
+        scraper.defaultRobotsUrl: (200, 'User-agent: *\nDisallow:'),
+        url: (
+          200,
+          '<script type="application/ld+json">${jsonEncode(node)}</script>'
+        ),
+        second: (429, 'Fixture HTTP failure'),
+      });
+      await expectLater(
+        HttpOverrides.runZoned(
+          () => scraper.main([
+            '--urls',
+            urls.path,
+            '--out',
+            output.path,
+            '--evidence-dir',
+            evidence,
+            '--limit',
+            '3',
+            '--delay-ms',
+            '0',
+          ]),
+          createHttpClient: (_) => client,
+        ),
+        throwsA(isA<HttpException>()),
+      );
+      final rows = output.readAsLinesSync().map(jsonDecode).toList();
+      final report =
+          jsonDecode(File('$evidence/report.json').readAsStringSync());
+      expect(rows, hasLength(1));
+      expect(rows.single['source_url'], url);
+      expect(report['attempted'], 2);
+      expect(report['accepted'], 1);
+      expect(report['rejected'], isEmpty);
+      expect(report['failure'], contains('HTTP 429'));
+      expect(report['complete'], false);
+      expect(client.requests, [scraper.defaultRobotsUrl, url, second]);
+    });
+
     test('same receipt deduplicates but fresh unchanged price can refresh', () {
       expect(
           parse(product())!['content_hash'], parse(product())!['content_hash']);
@@ -115,4 +180,61 @@ void main() {
       expect(hash, matches(RegExp(r'^[0-9a-f]{16}$')));
     });
   });
+}
+
+class _FixtureClient implements HttpClient {
+  _FixtureClient(this.responses);
+
+  final Map<String, (int, String)> responses;
+  final requests = <String>[];
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) async {
+    requests.add(url.toString());
+    final response = responses[url.toString()];
+    if (response == null) throw StateError('Unexpected fixture request: $url');
+    return _FixtureRequest(response.$1, response.$2);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _FixtureRequest implements HttpClientRequest {
+  _FixtureRequest(this.statusCode, this.body);
+
+  final int statusCode;
+  final String body;
+
+  @override
+  final HttpHeaders headers = _FixtureHeaders();
+
+  @override
+  Future<HttpClientResponse> close() async =>
+      _FixtureResponse(statusCode, body);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _FixtureHeaders implements HttpHeaders {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _FixtureResponse extends Stream<List<int>> implements HttpClientResponse {
+  _FixtureResponse(this.statusCode, this.body);
+
+  @override
+  final int statusCode;
+  final String body;
+
+  @override
+  StreamSubscription<List<int>> listen(void Function(List<int>)? onData,
+          {Function? onError, void Function()? onDone, bool? cancelOnError}) =>
+      Stream.value(utf8.encode(body)).listen(onData,
+          onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

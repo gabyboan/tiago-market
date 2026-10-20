@@ -49,6 +49,7 @@ class FakeMarketApi extends MarketApi {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
   });

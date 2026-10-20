@@ -4,10 +4,16 @@ import 'package:tiago_market_app/src/config.dart';
 import 'package:tiago_market_app/src/navigation/app_routes.dart';
 
 class WelcomePage extends StatelessWidget {
-  const WelcomePage({super.key});
+  const WelcomePage({super.key, this.onContinueAsGuest});
+
+  final VoidCallback? onContinueAsGuest;
 
   void _continueAsGuest(BuildContext context) {
-    Navigator.of(context).pushReplacementNamed(AppRoutes.search);
+    if (onContinueAsGuest != null) {
+      onContinueAsGuest!();
+    } else {
+      Navigator.of(context).pushReplacementNamed(AppRoutes.search);
+    }
   }
 
   @override
@@ -69,7 +75,7 @@ class WelcomePage extends StatelessWidget {
                       const SizedBox(height: 14),
                       Text(
                         authEnabled
-                            ? 'Puedes comparar como invitado o iniciar sesión con Google para guardar tu experiencia.'
+                            ? 'Con Google guardás tu carrito. Sin cuenta podés comprar, pero tu carrito se pierde al cerrar la app.'
                             : 'Modo invitado activo. Configura Supabase para habilitar cuentas.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(fontSize: 12),

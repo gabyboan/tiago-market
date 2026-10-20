@@ -7,12 +7,25 @@ import 'package:tiago_market_app/src/pages/welcome_page.dart';
 import 'package:tiago_market_app/src/widgets/product_comparison_card.dart';
 import 'package:tiago_market_app/src/widgets/shopping_list_sheet.dart';
 import 'package:tiago_market_app/src/widgets/session_loading_page.dart';
+import 'package:tiago_market_app/src/widgets/startup_splash.dart';
 
 void main() {
-  testWidgets('ofrece Google y acceso invitado antes de abrir el catálogo',
+  testWidgets('muestra la marca al iniciar y conserva el catálogo al volver',
       (tester) async {
     await tester.pumpWidget(const TiagoMarketApp());
+
+    expect(find.text('Tiago Market'), findsOneWidget);
+    expect(find.text('Continuar sin cuenta'), findsNothing);
+    final brandFade = find.ancestor(
+      of: find.text('Tiago Market'),
+      matching: find.byType(FadeTransition),
+    );
+    expect(tester.widget<FadeTransition>(brandFade).opacity.value, 0);
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(
+        tester.widget<FadeTransition>(brandFade).opacity.value, greaterThan(0));
     await tester.pumpAndSettle();
+    expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(find.byType(WelcomePage), findsOneWidget);
     expect(find.text('Continuar con Google'), findsOneWidget);
     expect(find.text('Continuar sin cuenta'), findsOneWidget);
@@ -24,6 +37,23 @@ void main() {
     expect(find.text('Buscar por ubicación'), findsOneWidget);
     expect(find.textContaining('Catálogo online'), findsOneWidget);
     expect(find.text('Continuar sin cuenta'), findsNothing);
+
+    final catalogElement = tester.element(find.byType(SearchPage));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const TiagoMarketApp());
+    await tester.pump();
+
+    expect(find.byType(StartupSplash), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(tester.element(find.byType(SearchPage)), same(catalogElement));
   });
 
   testWidgets('muestra ingreso breve al restaurar una cuenta', (tester) async {
