@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 import scheduled_source_refresh as refresh
 from refresh_grocery_catalogs import parse_woo_product
 from test_refresh_grocery_catalogs import response, woo
+from refresh_online_catalog import Database
 
 
 def fixture():
@@ -48,6 +49,25 @@ class IdentityTest(unittest.TestCase):
 
 
 class PublicationTest(unittest.TestCase):
+    def test_psql_uses_remote_host_and_database_name_without_uri_in_arguments(self):
+        connection = 'postgresql://postgres.fixture:p%40ss%25word@aws-0-region.pooler.supabase.com:5432/postgres?sslmode=require'
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.dict(refresh.os.environ, {'SUPABASE_DB_URL': connection}), \
+                patch('refresh_online_catalog.shutil.which', return_value='/usr/bin/psql'), \
+                patch('refresh_online_catalog.subprocess.run', return_value=Mock(
+                    returncode=0, stdout='[]', stderr='')) as run:
+            db = Database(Path(tmp))
+            db.execute('select 1', 'fixture')
+            command = run.call_args.args[0]
+            env = run.call_args.kwargs['env']
+            self.assertEqual(env['PGHOST'], 'aws-0-region.pooler.supabase.com')
+            self.assertEqual(env['PGDATABASE'], 'postgres')
+            self.assertEqual(env['PGUSER'], 'postgres.fixture')
+            self.assertEqual(env['PGPASSWORD'], 'p@ss%word')
+            self.assertEqual(env['PGSSLMODE'], 'require')
+            self.assertNotIn(connection, str(command))
+            self.assertNotIn('p@ss%word', str(command))
+
     def test_diagnostics_report_only_categories_without_raw_credentials(self):
         with tempfile.TemporaryDirectory() as tmp:
             secret = 'postgresql://postgres:private-password@db.invalid/postgres'
