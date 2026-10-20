@@ -1,0 +1,140 @@
+"""Automatic refresh must preserve identities, dates and publication gates."""
+from contextlib import redirect_stdout
+from copy import deepcopy
+import io
+import json
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import Mock, patch
+
+import scheduled_source_refresh as refresh
+from refresh_grocery_catalogs import parse_woo_product
+from test_refresh_grocery_catalogs import response, woo
+
+
+def fixture():
+    row = parse_woo_product(woo(), response([woo()]), 'fenix-mx')
+    known = {key: row[key] for key in ('source', 'store_product_url', 'presentation',
+                                     'normalized_name', 'store_slug', 'image_url')}
+    known.update(external_name=row['source_product_name'], category='Categoría revisada',
+                 latest_capture='2026-01-01T00:00:00Z')
+    return row, known
+
+
+class IdentityTest(unittest.TestCase):
+    def test_refresh_preserves_http_date_and_reviewed_identity_and_category(self):
+        row, known = fixture()
+        original = deepcopy(row)
+        rows, held = refresh.prepare_existing([row], [known])
+        self.assertFalse(held)
+        self.assertEqual(rows[0]['captured_at'], original['captured_at'])
+        self.assertEqual(rows[0]['category'], 'Categoría revisada')
+        self.assertEqual(row, original)
+
+    def test_new_product_and_changed_package_are_not_automatically_published(self):
+        row, known = fixture()
+        for saved in ([], [known | {'presentation': '1 kg'}]):
+            rows, held = refresh.prepare_existing([row], saved)
+            self.assertFalse(rows)
+            self.assertTrue(held)
+
+    def test_old_capture_cannot_replace_a_newer_saved_observation(self):
+        row, known = fixture()
+        known['latest_capture'] = '2099-01-01T00:00:00Z'
+        rows, held = refresh.prepare_existing([row], [known])
+        self.assertFalse(rows)
+        self.assertIn('older', held[0]['reason'])
+
+
+class PublicationTest(unittest.TestCase):
+    def test_failed_rollback_never_runs_commit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'accepted.ndjson'
+            with patch.object(refresh.subprocess, 'run', return_value=Mock(returncode=1)) as run:
+                with self.assertRaisesRegex(RuntimeError, 'dry-run failed'):
+                    refresh.publish(path, Path(tmp) / 'staging', 'fixture')
+            self.assertEqual(run.call_count, 1)
+            self.assertNotIn('--publish', run.call_args.args[0])
+
+    def test_catalog_must_contain_every_original_published_value(self):
+        row, _ = fixture()
+        db = Mock()
+        db.query.return_value = [{'expected': 1, 'matched': 0}]
+        with self.assertRaisesRegex(RuntimeError, 'do not match'):
+            refresh.verify_database(db, [row])
+        self.assertIn(row['captured_at'], db.query.call_args.args[0])
+
+    def test_empty_public_rpc_is_an_error(self):
+        with patch.object(refresh, 'urlopen', side_effect=lambda *a, **k: io.StringIO('[]')):
+            with self.assertRaisesRegex(RuntimeError, 'no available products'):
+                refresh.public_smoke({'SUPABASE_URL': 'https://fixture.supabase.co',
+                                      'SUPABASE_PUBLISHABLE_KEY': 'public-fixture'})
+
+
+class OrchestrationTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.folder = Path(self.tmp.name) / 'run'
+        self.row, self.known = fixture()
+        self.config = {'SUPABASE_URL': 'https://fixture.supabase.co',
+                       'SUPABASE_PUBLISHABLE_KEY': 'public-fixture'}
+        self.connection = 'postgresql://postgres.fixture:fixture-password@aws-0-region.pooler.supabase.com/postgres'
+
+    def execute(self, capture_failure=None, rows=None, verify_error=None):
+        db = Mock()
+        db.query.return_value = [self.known]
+        with patch.dict(refresh.os.environ, {'SUPABASE_DB_URL': self.connection}), \
+                patch.object(refresh, 'Database', return_value=db), \
+                patch.object(refresh, 'capture_source', return_value={
+                    'failure': capture_failure, 'full_catalog_traversed': True}), \
+                patch.object(refresh, 'read_ndjson', return_value=[self.row] if rows is None else rows), \
+                patch.object(refresh, 'publish', return_value={'inserted_snapshots': 1}) as publish, \
+                patch.object(refresh, 'verify_database', side_effect=verify_error,
+                             return_value={'expected': 1, 'matched': 1}), \
+                patch.object(refresh, 'public_smoke', return_value={'all': 1, 'leche': 0, 'arroz': 1}), \
+                redirect_stdout(io.StringIO()):
+            report = refresh.refresh('fenix-mx', self.folder, self.config)
+        return report, publish
+
+    def test_healthy_source_publishes_and_verifies(self):
+        report, publish = self.execute()
+        self.assertEqual(report['status'], 'ok')
+        self.assertEqual(report['inserted'], 1)
+        self.assertEqual(publish.call_count, 1)
+        self.assertEqual(json.loads((self.folder / 'report.json').read_text()), report)
+        self.assertNotIn(self.connection, (self.folder / 'report.json').read_text())
+
+    def test_blocked_capture_with_no_observations_never_publishes(self):
+        report, publish = self.execute('Origin stopped at HTTP 403', [])
+        self.assertEqual(report['status'], 'failed')
+        publish.assert_not_called()
+
+    def test_partial_capture_publishes_only_valid_observations_and_reports_failure(self):
+        report, publish = self.execute('Origin stopped at HTTP 503')
+        self.assertEqual(report['status'], 'partial')
+        publish.assert_called_once()
+
+    def test_failed_post_publication_verification_cannot_report_success(self):
+        report, _ = self.execute(verify_error=RuntimeError('Verification failed'))
+        self.assertEqual(report['status'], 'failed')
+
+    def test_error_report_does_not_expose_connection_or_public_key(self):
+        report, _ = self.execute(verify_error=RuntimeError(
+            self.connection + ' ' + self.config['SUPABASE_PUBLISHABLE_KEY']))
+        serialized = json.dumps(report)
+        self.assertNotIn(self.connection, serialized)
+        self.assertNotIn(self.config['SUPABASE_PUBLISHABLE_KEY'], serialized)
+
+    def test_wrong_project_fails_before_database_or_capture(self):
+        with patch.dict(refresh.os.environ, {'SUPABASE_DB_URL': self.connection}), \
+                patch.object(refresh, 'Database') as db, redirect_stdout(io.StringIO()):
+            report = refresh.refresh('fenix-mx', self.folder,
+                                     self.config | {'SUPABASE_URL': 'https://other.supabase.co'})
+        self.assertEqual(report['status'], 'failed')
+        db.assert_not_called()
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -52,7 +52,8 @@ python3 tools/ingestion/python/merco_online_scraper.py \
   --limit 6 --delay-ms 5000 --out /tmp/merco-nueva-captura.ndjson
 ```
 
-No sobrescribir capturas anteriores ni publicar automáticamente un lote parcial.
+No sobrescribir capturas anteriores. Publicar únicamente observaciones que
+pasen todos los controles; las rechazadas quedan fuera y se informan.
 
 ## Validar sin conectarse a la base
 
@@ -76,10 +77,43 @@ Revisar proyecto de destino, preflight, alcance del precio e historial de
 migraciones antes de cualquier escritura. La carga conserva la separación
 online/local y la identidad idempotente de las observaciones.
 
-## Canasta diaria Chedraui–Merco
+## Actualización automática del catálogo
 
-El workflow `update-chedraui-merco-basket.yml` se ejecuta a las `11:30 UTC` y
-admite ejecución manual. Usa las ocho fichas de
+El workflow `refresh-online-catalog.yml` consulta las 14 fuentes de alimentos
+con conectores actuales, todos los días a las **07:17 y 19:17 de Argentina**
+(`10:17` y `22:17 UTC`). GitHub Actions puede iniciar la ejecución con demora.
+También se puede ejecutar manualmente para todas las fuentes o un comercio.
+
+Cada comercio tiene su propio job; se ejecutan hasta tres en paralelo. Un
+bloqueo de una tienda no impide renovar las demás. Se respetan robots,
+intervalos y límites de los conectores existentes. No depende de que esté
+encendida una computadora ni de abrir la app.
+
+`python/scheduled_source_refresh.py` concilia cada captura nueva con las
+identidades y presentaciones ya publicadas. Los productos nuevos o ambiguos
+quedan fuera de la publicación automática. Cada lote pasa por el staging
+existente y una transacción de prueba con rollback antes de confirmarse. Se
+conservan las fechas HTTP originales y el historial; volver a procesar una
+captura no renueva su vigencia.
+
+Después de publicar, compara precios, fechas, disponibilidad e identidades
+contra el catálogo vigente y prueba la RPC pública de la app. Un catálogo
+vacío o una verificación fallida marca el job como fallido. Una captura que se
+interrumpe puede publicar su parte validada, pero queda marcada como parcial.
+
+Actions requiere `SUPABASE_DB_URL` (URI completa del Session pooler) y
+`SUPABASE_URL` como secretos, y `SUPABASE_PUBLISHABLE_KEY` como variable pública.
+La conexión de base debe corresponder al mismo proyecto de la RPC. No se usa
+una clave privilegiada en la app ni en la demo.
+
+El resumen de cada job muestra los conteos y errores. Solo `report.json`, con
+conteos y verificaciones, se conserva como artefacto por 14 días. Las capturas,
+payloads, SQL y credenciales no se suben como artefactos públicos.
+
+## Canasta revisada Chedraui–Merco
+
+El workflow `update-chedraui-merco-basket.yml` queda disponible para ejecución
+manual. Usa las ocho fichas de
 `catalogs/chedraui_merco_basket.json` y el secreto `SUPABASE_DB_URL` de Actions.
 
 `python/daily_basket_update.py` revisa ambas fuentes, identidad, presentación,
@@ -90,6 +124,9 @@ publicación se bloquea y los snapshots anteriores se conservan.
 El workflow guarda reportes y comprobantes durante 30 días como artefactos de
 Actions. Revisar esos artefactos antes de compartirlos; no forman parte del
 código publicado.
+
+El flujo anterior de Profeco también queda manual. La renovación automática
+del catálogo de la app la realiza `refresh-online-catalog.yml`.
 
 ## Pruebas
 
