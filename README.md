@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="apps/price_web/public/tiago-market-navbar.svg" alt="Tiago Market" width="300" />
+  <img src="apps/price_web/public/tiago-market-navbar.svg" alt="Tiago Market" width="120" />
 </p>
 
 <h1 align="center">Tiago Market</h1>
@@ -16,6 +16,27 @@ Tiago Market reúne precios observados de comercios de México para buscar
 productos, comparar opciones y organizar una lista de compras. El proyecto
 combina una aplicación Flutter, una web de consulta y un pipeline de ingesta
 que conserva fuente, fecha y evidencia de cada observación.
+
+## La app en Android
+
+|                                                    Buscar productos                                                    |                                                          Comparar precios                                                          |                                                     Lista de compras                                                      |
+| :--------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------: |
+| <img src="docs/media/products.png" alt="Resultados de búsqueda de productos Lala en el catálogo online" width="230" /> | <img src="docs/media/comparison.png" alt="Comparación de un producto entre dos tiendas, con precio, fuente y fecha" width="230" /> | <img src="docs/media/shopping-list.png" alt="Lista de compras con cantidades, subtotales y costo estimado" width="230" /> |
+
+**[Ver el recorrido completo en video (MP4)](docs/media/tiago-market-demo.mp4)**
+
+<details>
+<summary>Ver un avance animado</summary>
+
+<p align="center">
+  <img src="docs/media/preview.gif" alt="Recorrido por búsqueda, comparación y lista de compras en Android" width="320" />
+</p>
+
+</details>
+
+Capturas reales de la versión Android 0.2.5, tomadas el 20 de octubre de 2026.
+Los precios visibles son observaciones del catálogo; la comparación muestra
+sus fuentes y fechas.
 
 ## Funciones implementadas
 

@@ -74,5 +74,12 @@ coverage/
 !/docs/development.md
 !/docs/api-v1.md
 !/docs/github-publication.md
+!/docs/media/
+/docs/media/*
+!/docs/media/products.png
+!/docs/media/comparison.png
+!/docs/media/shopping-list.png
+!/docs/media/tiago-market-demo.mp4
+!/docs/media/preview.gif
 /apps/flutter_app/docs/*
 !/apps/flutter_app/docs/envio-y-pagos.md

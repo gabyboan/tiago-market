@@ -9,7 +9,9 @@ de ejemplo usan marcadores sin acceso real a servicios.
 `docs` usa una lista explícita de archivos permitidos en `.gitignore`:
 índice, arquitectura, desarrollo, contrato HTTP y esta guía.
 En `apps/flutter_app/docs` se publica únicamente el contrato técnico de envío
-y pagos. Los README de cada componente describen su uso.
+y pagos. `docs/media` permite únicamente las capturas y videos seleccionados
+para el README; los originales y las capturas de trabajo permanecen locales.
+Los README de cada componente describen su uso.
 
 Los informes fechados, conversaciones, entregas de clientes, comprobantes,
 capturas, respuestas HTML/JSON, dumps y archivos de evidencias permanecen
