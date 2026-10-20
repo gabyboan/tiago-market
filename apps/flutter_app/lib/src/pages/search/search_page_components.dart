@@ -72,7 +72,9 @@ class _SearchAppBar extends StatelessWidget implements PreferredSizeWidget {
 }
 
 class _SearchHero extends StatelessWidget {
-  const _SearchHero();
+  const _SearchHero({this.demo = false});
+
+  final bool demo;
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +92,9 @@ class _SearchHero extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          'Compara alimentos, bebidas, hogar, limpieza, electrónica y más productos publicados por tiendas reales.',
+          demo
+              ? 'Explorá la comparación con productos y comercios de ejemplo.'
+              : 'Compara alimentos, bebidas, hogar, limpieza, electrónica y más productos publicados por tiendas reales.',
           style: TextStyle(
             fontSize: 16,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -184,7 +188,7 @@ class _CategoryChips extends StatelessWidget {
     if (categories.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
-      height: 42,
+      height: 28 + MediaQuery.textScalerOf(context).scale(14),
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
@@ -223,13 +227,13 @@ class _SearchHistorySection extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(
+            Expanded(
+                child: Text(
               'Búsquedas recientes',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
-            ),
-            const Spacer(),
+            )),
             TextButton(
               onPressed: controller.clearSearchHistory,
               child: const Text('Borrar'),
@@ -260,6 +264,10 @@ class _LocationControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (controller.usingDemo) {
+      return const SizedBox.shrink();
+    }
+
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -340,13 +348,13 @@ class _FavoritesSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(
+            Expanded(
+                child: Text(
               'Favoritos guardados',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
-            ),
-            const Spacer(),
+            )),
             TextButton(
               onPressed: () {
                 showModalBottomSheet<void>(
@@ -366,7 +374,7 @@ class _FavoritesSection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         SizedBox(
-          height: 42,
+          height: 28 + MediaQuery.textScalerOf(context).scale(14),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: controller.favorites.length,
@@ -399,7 +407,7 @@ class _NoticeSection extends StatelessWidget {
       notices.add(const NoticeCard(
         icon: Icons.science_outlined,
         text:
-            'Vista demo. Al desplegar la API, esta pantalla mostrará datos en vivo.',
+            'Datos ficticios para probar la app. No son precios ni stock reales.',
       ));
     }
     if (controller.error != null) {
@@ -411,7 +419,9 @@ class _NoticeSection extends StatelessWidget {
       icon: controller.hasLocation ? Icons.storefront_outlined : Icons.public,
       text: controller.hasLocation
           ? 'Precios de sucursales cercanas verificadas'
-          : 'Catálogo online · precios en MXN · sin ubicación',
+          : controller.usingDemo
+              ? 'Catálogo de ejemplo · precios en MXN'
+              : 'Catálogo online · precios en MXN · sin ubicación',
     ));
     if (controller.usingCache) {
       notices.add(const NoticeCard(
@@ -445,7 +455,10 @@ class _ResultsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      spacing: 12,
+      runSpacing: 4,
+      alignment: WrapAlignment.spaceBetween,
       children: [
         Text(
           'Mejores precios',
@@ -453,7 +466,6 @@ class _ResultsHeader extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
         ),
-        const Spacer(),
         Text(
           '$groupsCount productos · $pricesCount precios',
           style: TextStyle(

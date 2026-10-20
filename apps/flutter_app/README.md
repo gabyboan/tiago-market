@@ -1,7 +1,7 @@
 # Tiago Market · Flutter
 
 Cliente móvil y multiplataforma para comparar precios observados de comercios
-de México. La versión de la app es `0.2.5+7`.
+de México. La versión de la app es `0.2.6+8`.
 
 Incluye búsqueda, comparación por comercio y sucursal, favoritos, lista de
 compras, acceso invitado, Google Auth y carrito sincronizado por cuenta.
@@ -99,3 +99,25 @@ configurados en GitHub Actions y no publica en Play Store.
 Ver [arquitectura](../../docs/architecture.md),
 [ingesta](tools/ingestion/README.md) y
 [contratos de envío y pagos](docs/envio-y-pagos.md).
+
+## Demo de portafolio
+
+[Probar la misma interfaz en el navegador](https://gabyboan.github.io/tiago-market/),
+sin registro ni configuración de servicios. `lib/main_demo.dart` inyecta un
+catálogo ficticio con `DemoMarketApi`; mantiene el aviso de demo en todas las
+pantallas y deshabilita login, ubicación y formularios de datos personales.
+
+```bash
+flutter pub get
+python3 tools/build_portfolio_demo.py --base-href=/
+python3 -m http.server 8080 --directory build/portfolio-demo
+```
+
+El build no usa Dart defines de servicios, no inicializa Supabase, Firebase ni
+Sentry y falla al arrancar si se intenta incluir configuración de servicios.
+El workflow `portfolio-demo.yml` construye y publica en GitHub Pages desde
+`main`, con el prefijo `/tiago-market/`. No requiere secretos de producción.
+
+La versión 0.2.6 conserva los controles originales y permite leer los
+detalles completos al desplegar un producto. El costo estimado de la lista suma sus subtotales; las ofertas
+alternativas de distintas tiendas se comparan por separado.

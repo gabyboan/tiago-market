@@ -24,7 +24,7 @@ class SearchController extends ChangeNotifier with WidgetsBindingObserver {
     _loadFavorites();
     _loadSearchHistory();
     _loadCategories();
-    if (loadOnStart ?? (apiBaseUrl.isNotEmpty || authEnabled)) {
+    if (loadOnStart ?? (_api.isDemo || apiBaseUrl.isNotEmpty || authEnabled)) {
       Future.microtask(search);
     }
   }
@@ -33,7 +33,9 @@ class SearchController extends ChangeNotifier with WidgetsBindingObserver {
   final ShoppingListStorage _cart;
   StreamSubscription<AuthState>? _cartAuthSubscription;
   String? _cartUserId;
-  String get cartStatus => _cart.status;
+  String get cartStatus => usingDemo
+      ? 'Lista de ejemplo. Se borra al cerrar o recargar la demo.'
+      : _cart.status;
   bool get cartSignedIn => _cart.signedIn;
   Future<void> retryCartSync() => _cart.synchronize();
 
@@ -43,7 +45,7 @@ class SearchController extends ChangeNotifier with WidgetsBindingObserver {
   List<PriceResult> results = [];
   bool loading = false;
   bool loadingMore = false;
-  bool usingDemo = false;
+  bool get usingDemo => _api.isDemo;
   bool usingCache = false;
   bool locating = false;
   double? latitude;
@@ -296,14 +298,12 @@ class SearchController extends ChangeNotifier with WidgetsBindingObserver {
       this.results = unique.values.toList();
       page = nextPage;
       hasMore = results.length == 100;
-      usingDemo = false;
       usingCache = _api.usedCache;
     } catch (exception) {
       if (_disposed || requestId != _requestId) return;
       if (!append) {
         results = [];
       }
-      usingDemo = false;
       usingCache = false;
       error = exception.toString().replaceFirst('Exception: ', '');
     } finally {

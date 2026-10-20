@@ -131,7 +131,15 @@ void main() {
       ),
     );
 
-    expect(find.text('\$40.00'), findsNWidgets(2));
+    expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('shopping-list-estimate')))
+            .data,
+        '\$40.00');
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text('Estimación por tienda'), findsOneWidget);
+    expect(find.text('\$40.00'), findsWidgets);
     expect(find.textContaining('toStringAsFixed'), findsNothing);
   });
 

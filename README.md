@@ -17,6 +17,15 @@ productos, comparar opciones y organizar una lista de compras. El proyecto
 combina una aplicación Flutter, una web de consulta y un pipeline de ingesta
 que conserva fuente, fecha y evidencia de cada observación.
 
+## Probar la demo
+
+**[Abrir Tiago Market en el navegador](https://gabyboan.github.io/tiago-market/)** · Sin registro
+
+Buscá productos, compará comercios, guardá favoritos y armá una lista de
+compras. La demo usa ocho productos y dos comercios ficticios, señalados en
+pantalla; no consulta producción ni realiza compras. La lista se borra al
+recargar y los favoritos se guardan solamente en tu navegador.
+
 ## La app en Android
 
 |                                                    Buscar productos                                                    |                                                          Comparar precios                                                          |                                                     Lista de compras                                                      |

@@ -13,10 +13,12 @@ class ShoppingListSheet extends StatefulWidget {
     this.signedIn = false,
     this.persistenceStatus,
     this.onRetrySync,
+    this.demo = false,
     super.key,
   });
 
   final List<ShoppingItem> items;
+  final bool demo;
   final bool signedIn;
   final String? persistenceStatus;
   final Future<void> Function()? onRetrySync;
@@ -119,8 +121,13 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
   @override
   Widget build(BuildContext context) {
     final totals = calculateStoreTotals(_items);
-    final grandTotal =
-        totals.fold<double>(0, (sum, total) => sum + total.total);
+    // Offers from different stores are alternatives, not additional purchases.
+    final grandTotal = _items.fold<double>(
+        0,
+        (sum, item) =>
+            sum +
+            (item.prices.isEmpty ? 0 : item.prices.first.price) *
+                item.quantity);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -151,8 +158,11 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
                   ),
               ],
               const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 8,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,6 +182,7 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
                   ),
                   Text(
                     '\$${grandTotal.toStringAsFixed(2)}',
+                    key: const ValueKey('shopping-list-estimate'),
                     style: const TextStyle(
                       color: Color(0xFF006C51),
                       fontWeight: FontWeight.w900,
@@ -181,16 +192,15 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
                 ],
               ),
               const SizedBox(height: 10),
-              Row(
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
                 children: [
-                  Expanded(
-                    child: FilledButton.tonalIcon(
-                      onPressed: _items.isEmpty ? null : _shareShoppingList,
-                      icon: const Icon(Icons.share_rounded),
-                      label: const Text('Compartir lista'),
-                    ),
+                  FilledButton.tonalIcon(
+                    onPressed: _items.isEmpty ? null : _shareShoppingList,
+                    icon: const Icon(Icons.share_rounded),
+                    label: const Text('Compartir lista'),
                   ),
-                  const SizedBox(width: 10),
                   OutlinedButton.icon(
                     onPressed: _items.isEmpty ? null : _clearList,
                     icon: const Icon(Icons.delete_outline),
@@ -199,66 +209,86 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
                 ],
               ),
               const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: _items.isEmpty
-                    ? null
-                    : () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) =>
-                                CheckoutPage(items: List.unmodifiable(_items)),
+              if (widget.demo)
+                const Text(
+                    'Demo: no se crean pedidos ni se solicitan datos personales.')
+              else
+                FilledButton.icon(
+                  onPressed: _items.isEmpty
+                      ? null
+                      : () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => CheckoutPage(
+                                  items: List.unmodifiable(_items)),
+                            ),
                           ),
-                        ),
-                icon: const Icon(Icons.local_shipping_outlined),
-                label: const Text('Preparar envío y pago'),
-              ),
+                  icon: const Icon(Icons.local_shipping_outlined),
+                  label: const Text('Preparar envío y pago'),
+                ),
               const SizedBox(height: 18),
               if (_items.isEmpty)
                 const _EmptyState()
               else
                 for (final item in _items)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(item.productName),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (item.prices.isNotEmpty)
+                        Text(item.productName,
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w700)),
+                        if (item.prices.isNotEmpty) ...[
+                          const SizedBox(height: 8),
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               StoreLogo(
-                                storeName: item.prices.first.storeName,
-                                storeSlug: item.prices.first.storeSlug,
-                              ),
-                              const SizedBox(width: 6),
+                                  storeName: item.prices.first.storeName,
+                                  storeSlug: item.prices.first.storeSlug),
+                              const SizedBox(width: 8),
                               Expanded(
                                   child: Text(item.prices.first.storeName)),
                             ],
                           ),
+                        ],
                         Text('${item.prices.length} precios disponibles'),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Subtotal: \$${((item.prices.isEmpty ? 0 : item.prices.first.price) * item.quantity).toStringAsFixed(2)}',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                    leading: IconButton(
-                      onPressed: () => _changeQuantity(item, item.quantity - 1),
-                      icon: const Icon(Icons.remove_circle_outline),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('${item.quantity}'),
-                        IconButton(
-                          onPressed: () =>
-                              _changeQuantity(item, item.quantity + 1),
-                          icon: const Icon(Icons.add_circle_outline),
-                        ),
-                        IconButton(
-                          onPressed: () => _removeItem(item),
-                          icon: const Icon(Icons.delete_outline),
-                          tooltip: 'Eliminar producto',
+                        const SizedBox(height: 8),
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 12,
+                          runSpacing: 4,
+                          children: [
+                            Text(
+                              'Subtotal: \$${((item.prices.isEmpty ? 0 : item.prices.first.price) * item.quantity).toStringAsFixed(2)}',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  onPressed: () =>
+                                      _changeQuantity(item, item.quantity - 1),
+                                  icon: const Icon(Icons.remove_circle_outline),
+                                  tooltip: 'Disminuir cantidad',
+                                ),
+                                Text('${item.quantity}'),
+                                IconButton(
+                                  onPressed: () =>
+                                      _changeQuantity(item, item.quantity + 1),
+                                  icon: const Icon(Icons.add_circle_outline),
+                                  tooltip: 'Aumentar cantidad',
+                                ),
+                                IconButton(
+                                  onPressed: () => _removeItem(item),
+                                  icon: const Icon(Icons.delete_outline),
+                                  tooltip: 'Eliminar producto',
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -273,20 +303,29 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
                 ),
                 const SizedBox(height: 8),
                 for (final total in totals)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: StoreLogo(storeName: total.storeName, size: 36),
-                    title: Text(total.storeName),
-                    subtitle: Text(
-                      '${total.coveredItems} de ${_items.length} productos disponibles',
-                    ),
-                    trailing: Text(
-                      '\$${total.total.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: Color(0xFF006C51),
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            StoreLogo(storeName: total.storeName, size: 36),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(total.storeName)),
+                          ],
+                        ),
+                        Text(
+                            '${total.coveredItems} de ${_items.length} productos disponibles'),
+                        Text(
+                          '\$${total.total.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                              color: Color(0xFF006C51),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18),
+                        ),
+                      ],
                     ),
                   ),
               ],

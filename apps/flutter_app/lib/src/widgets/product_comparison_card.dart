@@ -51,21 +51,26 @@ class ProductComparisonCard extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                StoreLogo(storeName: best.storeName, storeSlug: best.storeSlug),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    hasDistanceRecommendation
-                        ? 'Más cerca en ${best.storeName}'
-                        : 'Mejor precio en ${best.storeName}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+            LayoutBuilder(
+              builder: (context, constraints) => Row(
+                children: [
+                  if (constraints.maxWidth >= 100) ...[
+                    StoreLogo(
+                        storeName: best.storeName, storeSlug: best.storeSlug),
+                    const SizedBox(width: 6),
+                  ],
+                  Expanded(
+                    child: Text(
+                      hasDistanceRecommendation
+                          ? 'Más cerca en ${best.storeName}'
+                          : 'Mejor precio en ${best.storeName}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             Text(
               '${best.presentation ?? "Presentación por verificar"} - ${group.prices.length} ${group.prices.length == 1 ? "precio" : "precios"}',
@@ -82,6 +87,14 @@ class ProductComparisonCard extends StatelessWidget {
         ),
         childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(group.productName,
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ),
           for (var index = 0; index < group.prices.length; index++) ...[
             PriceCard(
               result: group.prices[index],
@@ -171,9 +184,11 @@ class PriceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final detail = result.branchName == null
-        ? 'Precios online, no verificados para una sucursal cercana.'
-        : 'Sucursal: ${result.branchName}';
+    final detail = result.source == 'demo'
+        ? 'Precio ficticio para demostrar la comparación.'
+        : result.branchName == null
+            ? 'Precios online, no verificados para una sucursal cercana.'
+            : 'Sucursal: ${result.branchName}';
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -182,100 +197,31 @@ class PriceCard extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      StoreLogo(
-                          storeName: result.storeName,
-                          storeSlug: result.storeSlug),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          result.storeName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ],
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                StoreLogo(
+                    storeName: result.storeName, storeSlug: result.storeSlug),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    result.storeName,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w800),
                   ),
-                  if (recommended) ...[
-                    const SizedBox(height: 6),
-                    _RecommendationBadge(
-                      label: recommendationMode == 'distance' &&
-                              result.distanceKm != null
-                          ? 'Más cerca'
-                          : 'Conviene acá',
-                    ),
-                  ],
-                  const SizedBox(height: 6),
-                  Text(
-                    detail,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  if (result.presentation != null) Text(result.presentation!),
-                  if (result.branchAddress != null)
-                    Text(result.branchAddress!,
-                        style: const TextStyle(fontSize: 12)),
-                  Text(
-                    result.observationLabel,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  if (result.distanceKm != null)
-                    Text(
-                      '${result.distanceKm!.toStringAsFixed(1)} km de distancia',
-                      style: const TextStyle(
-                        color: Color(0xFF006C51),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  if (result.evidenceUrl != null) ...[
-                    const SizedBox(height: 4),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () => _openUrl(result.evidenceUrl!),
-                        icon: const Icon(Icons.open_in_new_rounded, size: 17),
-                        label: const Text('Ver fuente'),
-                      ),
-                    ),
-                  ],
-                  if (result.freshness == 'old') ...[
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Este precio puede estar desactualizado.',
-                      style: TextStyle(
-                        color: Color(0xFF9A3412),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: 108,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerRight,
-                child: Text(
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
                   '\$${result.price.toStringAsFixed(2)} MXN',
                   style: const TextStyle(
                     color: Color(0xFF006C51),
@@ -284,8 +230,60 @@ class PriceCard extends StatelessWidget {
                     letterSpacing: -0.5,
                   ),
                 ),
+                if (recommended)
+                  _RecommendationBadge(
+                    label: recommendationMode == 'distance' &&
+                            result.distanceKm != null
+                        ? 'Más cerca'
+                        : 'Conviene acá',
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(detail, style: const TextStyle(fontSize: 12)),
+            if (result.presentation != null) Text(result.presentation!),
+            if (result.branchAddress != null)
+              Text(result.branchAddress!, style: const TextStyle(fontSize: 12)),
+            Text(
+              result.source == 'demo'
+                  ? 'Sin observación real'
+                  : result.observationLabel,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
+            if (result.distanceKm != null)
+              Text(
+                '${result.distanceKm!.toStringAsFixed(1)} km de distancia',
+                style: const TextStyle(
+                  color: Color(0xFF006C51),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            if (result.evidenceUrl != null) ...[
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => _openUrl(result.evidenceUrl!),
+                  icon: const Icon(Icons.open_in_new_rounded, size: 17),
+                  label: const Text('Ver fuente'),
+                ),
+              ),
+            ],
+            if (result.freshness == 'old') ...[
+              const SizedBox(height: 6),
+              const Text(
+                'Este precio puede estar desactualizado.',
+                style: TextStyle(
+                  color: Color(0xFF9A3412),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ],
         ),
       ),
