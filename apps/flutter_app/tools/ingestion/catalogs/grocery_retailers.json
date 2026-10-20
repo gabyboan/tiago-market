@@ -1,0 +1,588 @@
+{
+  "scope": "Mexican grocery chains and grouped retail formats already researched",
+  "retailers": [
+    {
+      "chain": "COMPRO Súper",
+      "formats": "COMPRO Súper",
+      "sources": [
+        "compro-super-mx"
+      ],
+      "official_url": "https://www.comprov.com.mx/tienda.html",
+      "identity_source": "https://www.comprov.com.mx/tienda.html",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Incorporada al catálogo online",
+      "prior_detail": "Datos completos para catálogo; muestra de foto cargada (HTTP 200).",
+      "adapter_status": "implemented"
+    },
+    {
+      "chain": "CarneMart México",
+      "formats": "CarneMart México",
+      "sources": [
+        "carnemart-mx"
+      ],
+      "official_url": "https://carnemart.com/",
+      "identity_source": "https://carnemart.com/",
+      "prior_review_date": "",
+      "prior_status": "Incorporada al catálogo online",
+      "prior_detail": "Datos completos para catálogo; muestra de foto cargada (HTTP 200).",
+      "adapter_status": "implemented"
+    },
+    {
+      "chain": "Fénix El Super de Casa",
+      "formats": "Fénix El Super de Casa",
+      "sources": [
+        "fenix-mx"
+      ],
+      "official_url": "https://superfenix.mx/tienda/",
+      "identity_source": "https://superfenix.mx/tienda/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Incorporada al catálogo online",
+      "prior_detail": "Datos completos para catálogo; muestra de foto cargada (HTTP 200).",
+      "adapter_status": "implemented"
+    },
+    {
+      "chain": "Jüsto",
+      "formats": "Jüsto",
+      "sources": [
+        "justo-mx"
+      ],
+      "official_url": "https://justo.mx/",
+      "identity_source": "https://justo.mx/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Incorporada al catálogo online",
+      "prior_detail": "Datos completos para catálogo; muestra de foto cargada (HTTP 200).",
+      "adapter_status": "implemented"
+    },
+    {
+      "chain": "MAS Bodega",
+      "formats": "MAS Bodega",
+      "sources": [
+        "mas-bodega-mx"
+      ],
+      "official_url": "https://masbodega.mayoreoenlinea.mx/",
+      "identity_source": "https://masbodega.mayoreoenlinea.mx/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Incorporada al catálogo online",
+      "prior_detail": "Datos completos para catálogo; muestra de foto cargada (HTTP 200).",
+      "adapter_status": "implemented"
+    },
+    {
+      "chain": "Smart & Final México",
+      "formats": "Smart & Final México",
+      "sources": [
+        "smart-final-public-web"
+      ],
+      "official_url": "https://www.smartnfinal.com.mx/",
+      "identity_source": "https://www.smartnfinal.com.mx/",
+      "prior_review_date": "",
+      "prior_status": "Incorporada al catálogo online",
+      "prior_detail": "Datos completos para catálogo; muestra de foto cargada (HTTP 200).",
+      "adapter_status": "implemented"
+    },
+    {
+      "chain": "Chedraui",
+      "formats": "Chedraui",
+      "sources": [
+        "chedraui-mx"
+      ],
+      "official_url": "https://www.chedraui.com.mx/",
+      "identity_source": "https://www.chedraui.com.mx/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Incorporada al catálogo online",
+      "prior_detail": "14/14 ofertas tienen URL de imagen; la muestra del servidor de fotos respondió HTTP 429.",
+      "adapter_status": "implemented"
+    },
+    {
+      "chain": "Garís",
+      "formats": "Garís",
+      "sources": [
+        "garis-mx"
+      ],
+      "official_url": "https://garis.mayoreoenlinea.mx/",
+      "identity_source": "https://garis.mayoreoenlinea.mx/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Incorporada al catálogo online",
+      "prior_detail": "4/5 ofertas vigentes tienen imagen; la oferta de jabón Zote rosa no tiene foto incorporada. La muestra cargó.",
+      "adapter_status": "implemented"
+    },
+    {
+      "chain": "Gran Bodega",
+      "formats": "Gran Bodega",
+      "sources": [
+        "gran-bodega-mx"
+      ],
+      "official_url": "https://www.lagranbodega.com.mx/",
+      "identity_source": "https://www.lagranbodega.com.mx/",
+      "prior_review_date": "",
+      "prior_status": "Incorporada al catálogo online",
+      "prior_detail": "7/7 ofertas tienen URL de imagen; la muestra del servidor de fotos respondió HTTP 429.",
+      "adapter_status": "implemented"
+    },
+    {
+      "chain": "Merco",
+      "formats": "Nueva Rosita y Monterrey; dos catálogos regionales",
+      "sources": [
+        "merco-mx",
+        "merco-rosita-mx"
+      ],
+      "official_url": "https://merco4.tiendariqra.com/",
+      "identity_source": "https://merco4.tiendariqra.com/",
+      "prior_review_date": "",
+      "prior_status": "Incorporada al catálogo online",
+      "prior_detail": "11/12 ofertas vigentes tienen imagen: Nueva Rosita 8/8 y Monterrey 3/4. Una muestra de Nueva Rosita cargó.",
+      "adapter_status": "implemented"
+    },
+    {
+      "chain": "Scorpion",
+      "formats": "Scorpion",
+      "sources": [
+        "scorpion-mx"
+      ],
+      "official_url": "https://www.scorpion.com.mx/",
+      "identity_source": "https://www.scorpion.com.mx/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Incorporada al catálogo online",
+      "prior_detail": "15/15 fichas revisadas muestran foto principal; Tiago conserva 0/15 URLs de imagen. La muestra de origen cargó.",
+      "adapter_status": "implemented"
+    },
+    {
+      "chain": "Arteli",
+      "formats": "Arteli",
+      "sources": [
+        "arteli-public-web"
+      ],
+      "official_url": "https://www.arteli.com.mx/",
+      "identity_source": "https://www.arteli.com.mx/",
+      "prior_review_date": "",
+      "prior_status": "Histórico guardado; stock actual pendiente",
+      "prior_detail": "Histórico de junio; fuente pausada tras HTTP 429 del 23/09; no reactivada",
+      "adapter_status": "paused_after_429"
+    },
+    {
+      "chain": "Calimax",
+      "formats": "Calimax",
+      "sources": [
+        "calimax-public-web"
+      ],
+      "official_url": "https://www.calimax.com.mx/",
+      "identity_source": "https://www.calimax.com.mx/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Histórico guardado; stock actual pendiente",
+      "prior_detail": "Histórico de junio; HTML/JS accesibles; consulta pública 12/10 responde 302 sin stock",
+      "adapter_status": "historical_only"
+    },
+    {
+      "chain": "H-E-B México",
+      "formats": "H-E-B México",
+      "sources": [
+        "heb-public-web"
+      ],
+      "official_url": "https://www.heb.com.mx/",
+      "identity_source": "https://www.heb.com.mx/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Histórico guardado; stock actual pendiente",
+      "prior_detail": "Histórico de junio; nueva prueba 12/10 detenida por HTTP 403",
+      "adapter_status": "historical_only"
+    },
+    {
+      "chain": "City Market",
+      "formats": "City Market",
+      "sources": [],
+      "official_url": "https://www.citymarket.com.mx/",
+      "identity_source": "https://www.citymarket.com.mx/",
+      "prior_review_date": "25/09/2026",
+      "prior_status": "Sin lote completo incorporado",
+      "prior_detail": "HTML y directorio obtenidos mediante La Comer; sin inventario de productos validado.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "El Florido",
+      "formats": "El Florido",
+      "sources": [],
+      "official_url": "https://tienda.elflorido.com.mx/",
+      "identity_source": "https://tienda.elflorido.com.mx/",
+      "prior_review_date": "09/10/2026",
+      "prior_status": "Sin lote completo incorporado",
+      "prior_detail": "HTML 200, aplicación Nuxt; requiere sucursal. Sin oferta completa validada.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Fresh Market · Casa Ley",
+      "formats": "Fresh Market · Casa Ley",
+      "sources": [],
+      "official_url": "https://freshmarket.com.mx/",
+      "identity_source": "https://freshmarket.com.mx/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin lote completo incorporado",
+      "prior_detail": "Sitio de Casa Ley HTTP 200; sin ofertas con disponibilidad capturadas.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "La Misión",
+      "formats": "La Misión",
+      "sources": [],
+      "official_url": "https://www.lamisionsuper.com/",
+      "identity_source": "https://www.lamisionsuper.com/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin lote completo incorporado",
+      "prior_detail": "HTML 200 con sucursales/promociones; sin inventario por SKU.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Merza",
+      "formats": "Merza",
+      "sources": [],
+      "official_url": "https://www.merza.com/",
+      "identity_source": "https://simposioseguridad.antad.net/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin lote completo incorporado",
+      "prior_detail": "HTTP 200 con HTML mínimo; sin precio y disponibilidad verificables.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Piticó",
+      "formats": "Piticó",
+      "sources": [],
+      "official_url": "https://pitico.mx/",
+      "identity_source": "https://simposioseguridad.antad.net/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin lote completo incorporado",
+      "prior_detail": "HTML 200 institucional; sin stock por SKU. Confirmar permiso comercial para el contenido.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Super Gutiérrez",
+      "formats": "Super Gutiérrez",
+      "sources": [],
+      "official_url": "https://supergutierrez.com/",
+      "identity_source": "https://antad.net/wp-content/uploads/2023/08/listado-de-los-asociados.pdf",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin lote completo incorporado",
+      "prior_detail": "HTML 200 institucional; sin feed de inventario validado.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Súper Akí",
+      "formats": "Súper Akí",
+      "sources": [],
+      "official_url": "https://www.superaki.mx/",
+      "identity_source": "https://www.superaki.mx/",
+      "prior_review_date": "09/10/2026",
+      "prior_status": "Sin lote completo incorporado",
+      "prior_detail": "HTML 200, aplicación Angular; no se verificó un feed de precio y stock.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Tiendas 3B",
+      "formats": "Tiendas 3B",
+      "sources": [],
+      "official_url": "https://www.tiendas3b.com/",
+      "identity_source": "https://www.tiendas3b.com/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin lote completo incorporado",
+      "prior_detail": "Portada HTTP 200 institucional; productos/folletos no acreditan existencia por SKU.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Tiendas Neto",
+      "formats": "Tiendas Neto",
+      "sources": [],
+      "official_url": "https://tiendasneto.com.mx/",
+      "identity_source": "https://tiendasneto.com.mx/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin lote completo incorporado",
+      "prior_detail": "Portada HTTP 200; no se obtuvo feed completo de precio y disponibilidad. Folletos no acreditan stock por SKU.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Willy’s",
+      "formats": "Willy’s",
+      "sources": [],
+      "official_url": "https://www.superwillys.com/",
+      "identity_source": "https://www.superwillys.com/sucursales.php",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin lote completo incorporado",
+      "prior_detail": "HTML 200 con sucursales/promociones; sin feed precio/stock.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Alsuper",
+      "formats": "Alsuper",
+      "sources": [],
+      "official_url": "https://alsuper.mx/",
+      "identity_source": "https://alsuper.mx/",
+      "prior_review_date": "09/10/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "Fallo de transporte. Sin lote de productos aceptado.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Bodega Aurrera",
+      "formats": "Bodega Aurrera, Mi Bodega Aurrera y Bodega Aurrera Express",
+      "sources": [],
+      "official_url": "https://www.bodegaaurrera.com.mx/",
+      "identity_source": "https://www.bodegaaurrera.com.mx/",
+      "prior_review_date": "25/09/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "HTTP 412 y desafío de acceso. Sin lote de productos aceptado.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Casa Ley",
+      "formats": "Casa Ley",
+      "sources": [],
+      "official_url": "https://www.casaley.com.mx/",
+      "identity_source": "https://www.casaley.com.mx/",
+      "prior_review_date": "09/10/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "HTTP 403 en el origen probado. Sin lote de productos aceptado.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "City Club",
+      "formats": "City Club",
+      "sources": [],
+      "official_url": "https://www.cityclub.com.mx/",
+      "identity_source": "https://simposioseguridad.antad.net/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "HTTP 403; sin lote aceptado. La membresía de compra no acredita acceso a inventario.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Costco México",
+      "formats": "Costco México",
+      "sources": [],
+      "official_url": "https://www.costco.com.mx/",
+      "identity_source": "https://www.costco.com.mx/",
+      "prior_review_date": "25/09/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "HTML 200 con marcador de desafío; sin oferta validada.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Fresko",
+      "formats": "Fresko",
+      "sources": [],
+      "official_url": "https://www.fresko.com.mx/",
+      "identity_source": "https://www.fresko.com.mx/",
+      "prior_review_date": "25/09/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "Sitio: timeout. Directorio de sucursal obtenido; sin inventario de productos validado.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "La Comer",
+      "formats": "La Comer",
+      "sources": [],
+      "official_url": "https://www.lacomer.com.mx/lacomer/",
+      "identity_source": "https://www.lacomer.com.mx/lacomer/",
+      "prior_review_date": "25/09/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "Búsqueda exploratoria: 5 resultados. Robots restringe bots generales; no se integró stock.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Mi Tienda del Ahorro",
+      "formats": "Mi Tienda del Ahorro",
+      "sources": [],
+      "official_url": "https://www.mitienda.mx/",
+      "identity_source": "https://hebmexico.com.mx/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "HTTP 403; revisión detenida. Catálogo separado de H-E-B.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "S-Mart",
+      "formats": "S-Mart",
+      "sources": [],
+      "official_url": "https://www.supermercadossmart.com/",
+      "identity_source": "https://simposioseguridad.antad.net/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "robots respondió 200 sin reglas válidas; no se solicitó catálogo. Distinto de Smart & Final.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Sam's Club México",
+      "formats": "Sam's Club México",
+      "sources": [],
+      "official_url": "https://www.sams.com.mx/",
+      "identity_source": "https://www.sams.com.mx/",
+      "prior_review_date": "25/09/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "HTTP 412 y desafío de acceso. Sin lote de productos aceptado.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Soriana",
+      "formats": "Híper, Súper, Mercado, Express",
+      "sources": [],
+      "official_url": "https://www.soriana.com/",
+      "identity_source": "https://www.soriana.com/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "HTTP 403 en robots; revisión detenida. Sin stock actual obtenido.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "SuBodega! · Grupo Ibarra",
+      "formats": "SuBodega! · Grupo Ibarra",
+      "sources": [],
+      "official_url": "https://subodega.mx/",
+      "identity_source": "https://www.gpoibarra.com/divisiones/autoservicio",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "Sitio y app oficiales confirmados. robots 200 vacío; captura detenida. Catálogo Ibarra muestra precio, stock aún sin validar.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Super del Norte",
+      "formats": "Super del Norte",
+      "sources": [],
+      "official_url": "https://superdelnorte.com.mx/",
+      "identity_source": "https://antad.net/wp-content/uploads/2023/08/listado-de-los-asociados.pdf",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "Origen intentado devuelve HTTP 403. No se validó dominio comercial ni stock actual.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Súper Kompras",
+      "formats": "Súper Kompras",
+      "sources": [],
+      "official_url": "https://www.superkompras.com.mx/",
+      "identity_source": "https://antad.net/wp-content/uploads/2023/08/listado-de-los-asociados.pdf",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "Fallo de transporte en prueba directa; sin inventario obtenido.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Súper Sánchez",
+      "formats": "Súper Sánchez",
+      "sources": [],
+      "official_url": "https://www.supersanchez.com/",
+      "identity_source": "https://www.supersanchez.com/",
+      "prior_review_date": "09/10/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "HTML 200; API 403. JS indica stock y store_id; respuesta de inventario no obtenida.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Waldo’s",
+      "formats": "Waldo’s",
+      "sources": [],
+      "official_url": "https://waldos.com.mx/",
+      "identity_source": "https://simposioseguridad.antad.net/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "HTTP 403; sin stock obtenido.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Walmart México",
+      "formats": "Walmart Supercenter y Walmart Express",
+      "sources": [],
+      "official_url": "https://www.walmart.com.mx/",
+      "identity_source": "https://www.walmart.com.mx/",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "Portada HTTP 200; búsqueda de leche HTTP 412. Sin oferta completa aceptada.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Zorro Abarrotero",
+      "formats": "Zorro Abarrotero",
+      "sources": [],
+      "official_url": "https://www.zorroabarrotero.com.mx/",
+      "identity_source": "https://www.zorroabarrotero.com.mx/",
+      "prior_review_date": "09/10/2026",
+      "prior_status": "Sin acceso de catálogo completo validado",
+      "prior_detail": "HTTP 301; sin captura de productos en esa prueba.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Centro Comercial Cruz Azul",
+      "formats": "Centro Comercial Cruz Azul",
+      "sources": [],
+      "official_url": null,
+      "identity_source": "https://antad.net/wp-content/uploads/2023/08/listado-de-los-asociados.pdf",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin lote de productos; iniciar validación",
+      "prior_detail": "Nombre en directorio ANTAD de agosto de 2023; vigencia y portal comercial pendientes. No es el club de fútbol.",
+      "adapter_status": "identity_pending"
+    },
+    {
+      "chain": "Dunosusa",
+      "formats": "Dunosusa",
+      "sources": [],
+      "official_url": "https://empleos.dunosusa.com.mx/content/Nosotros/?locale=es_MX",
+      "identity_source": "https://mx.linkedin.com/company/dunosusamx",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin lote de productos; iniciar validación",
+      "prior_detail": "Cadena confirmada en sus canales oficiales; tienda online y feed de inventario pendientes de validar.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "SuPlaza",
+      "formats": "SuPlaza",
+      "sources": [],
+      "official_url": null,
+      "identity_source": "https://antad.net/wp-content/uploads/2023/08/listado-de-los-asociados.pdf",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin lote de productos; iniciar validación",
+      "prior_detail": "Nombre en directorio ANTAD de agosto de 2023; vigencia, portal oficial e inventario pendientes de confirmar.",
+      "adapter_status": "identity_pending"
+    },
+    {
+      "chain": "Sumesa",
+      "formats": "Sumesa",
+      "sources": [],
+      "official_url": "https://grupolacomer.com.mx/corporativo/sucursales",
+      "identity_source": "https://grupolacomer.com.mx/corporativo/sucursales",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin lote de productos; iniciar validación",
+      "prior_detail": "Formato confirmado en directorio oficial; sin captura de precio y stock.",
+      "adapter_status": "discovery_only"
+    },
+    {
+      "chain": "Supermercados Aramburo",
+      "formats": "Supermercados Aramburo",
+      "sources": [],
+      "official_url": null,
+      "identity_source": "https://antad.net/wp-content/uploads/2023/08/listado-de-los-asociados.pdf",
+      "prior_review_date": "12/10/2026",
+      "prior_status": "Sin lote de productos; iniciar validación",
+      "prior_detail": "Nombre en directorio ANTAD de agosto de 2023; portal actual e inventario pendientes de confirmar.",
+      "adapter_status": "identity_pending"
+    },
+    {
+      "chain": "SUPERISSSTE",
+      "formats": "SUPERISSSTE",
+      "sources": [
+        "superissste-mx"
+      ],
+      "official_url": "https://tusuperissste.com.mx/",
+      "identity_source": "https://www.superissste.gob.mx/wp-content/uploads/2026/05/TE%CC%81RMINOS-Y-CONDICIONES-SUPERISSSTE-TE-LLEVA-A-LA-CANCHA.pdf",
+      "prior_review_date": "2026-10-12",
+      "prior_status": "new_public_catalog_verified",
+      "prior_detail": "New official public catalog: explicit MXN price, images and boolean online availability observed.",
+      "adapter_status": "implemented"
+    },
+    {
+      "chain": "Merkabastos",
+      "formats": "Merkabastos",
+      "sources": [
+        "merkabastos-mx"
+      ],
+      "official_url": "https://merkabastos.com/",
+      "identity_source": "https://merkabastos.com/contacto/",
+      "prior_review_date": "2026-10-12",
+      "prior_status": "new_public_catalog_verified",
+      "prior_detail": "New official public catalog: explicit MXN price, images and boolean online availability observed.",
+      "adapter_status": "implemented"
+    }
+  ]
+}

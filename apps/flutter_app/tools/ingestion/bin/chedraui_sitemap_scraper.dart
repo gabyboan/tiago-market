@@ -55,6 +55,7 @@ Future<void> main(List<String> args) async {
     var emitted = 0;
     final rejected = <Map<String, String>>[];
     var attempted = 0;
+    String? failure;
 
     try {
       for (final productUrl in sitemapUrls) {
@@ -68,12 +69,12 @@ Future<void> main(List<String> args) async {
         }
 
         await Future<void>.delayed(options.delay);
+        attempted++;
         final page = await fetchText(
           client: client,
           url: productUrl,
           userAgent: options.userAgent,
         );
-        attempted++;
         final observedAt = DateTime.now().toUtc();
         final receipt = {
           'url': productUrl,
@@ -107,6 +108,9 @@ Future<void> main(List<String> args) async {
           break;
         }
       }
+    } catch (error) {
+      failure = error.toString();
+      rethrow;
     } finally {
       if (outputFile != null) {
         await outputFile.flush();
@@ -117,7 +121,10 @@ Future<void> main(List<String> args) async {
           'attempted': attempted,
           'accepted': emitted,
           'rejected': rejected,
-          'complete': attempted == sitemapUrls.length && rejected.isEmpty,
+          'failure': failure,
+          'complete': failure == null &&
+              attempted == sitemapUrls.length &&
+              rejected.isEmpty,
         }));
       }
     }
@@ -279,6 +286,13 @@ Map<String, Object?>? parseChedrauiProductPage({
     if (expiry == null || !expiry.toUtc().isAfter(observation)) return null;
   }
   // Missing quantities and ambiguous multipacks require review.
+  if (RegExp(r'\d+(?:[.,]\d+)?\s*(?:kg|kilos?|g|gr|gramos?|l|lt|litros?|ml|piezas?|pzas|pz)\b',
+              caseSensitive: false)
+          .allMatches(name)
+          .length >
+      1) {
+    return null;
+  }
   if (!RegExp(r'\d+(?:[.,]\d+)?\s*(?:kg|g|gr|l|lt|ml|piezas?)\b',
               caseSensitive: false)
           .hasMatch(name) ||

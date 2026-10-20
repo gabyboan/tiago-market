@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:tiago_market_app/auth/auth_account_button.dart';
-import 'package:tiago_market_app/src/navigation/app_routes.dart';
 
 class BusinessComingSoonPage extends StatelessWidget {
   const BusinessComingSoonPage({super.key});
@@ -41,9 +40,6 @@ class BusinessComingSoonPage extends StatelessWidget {
                   onPressed: () async {
                     try {
                       await GoogleAuthService.setRole('buyer');
-                      if (!context.mounted) return;
-                      Navigator.of(context)
-                          .pushReplacementNamed(AppRoutes.search);
                     } catch (_) {
                       // Ignore errors: auth gate will handle current role state.
                     }

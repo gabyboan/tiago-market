@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:tiago_market_app/src/models/models.dart';
 import 'package:tiago_market_app/src/widgets/product_image_fallback.dart';
+import 'package:tiago_market_app/src/widgets/store_logo.dart';
 
 class ProductComparisonCard extends StatelessWidget {
   const ProductComparisonCard({
@@ -50,13 +51,21 @@ class ProductComparisonCard extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              hasDistanceRecommendation
-                  ? 'Más cerca en ${best.storeName}'
-                  : 'Mejor precio en ${best.storeName}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w700),
+            Row(
+              children: [
+                StoreLogo(storeName: best.storeName, storeSlug: best.storeSlug),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    hasDistanceRecommendation
+                        ? 'Más cerca en ${best.storeName}'
+                        : 'Mejor precio en ${best.storeName}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
             ),
             Text(
               '${best.presentation ?? "Presentación por verificar"} - ${group.prices.length} ${group.prices.length == 1 ? "precio" : "precios"}',
@@ -182,6 +191,10 @@ class PriceCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
+                      StoreLogo(
+                          storeName: result.storeName,
+                          storeSlug: result.storeSlug),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           result.storeName,
@@ -193,17 +206,17 @@ class PriceCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (recommended) ...[
-                        const SizedBox(width: 8),
-                        _RecommendationBadge(
-                          label: recommendationMode == 'distance' &&
-                                  result.distanceKm != null
-                              ? 'Más cerca'
-                              : 'Conviene acá',
-                        ),
-                      ],
                     ],
                   ),
+                  if (recommended) ...[
+                    const SizedBox(height: 6),
+                    _RecommendationBadge(
+                      label: recommendationMode == 'distance' &&
+                              result.distanceKm != null
+                          ? 'Más cerca'
+                          : 'Conviene acá',
+                    ),
+                  ],
                   const SizedBox(height: 6),
                   Text(
                     detail,
@@ -257,13 +270,20 @@ class PriceCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Text(
-              '\$${result.price.toStringAsFixed(2)} MXN',
-              style: const TextStyle(
-                color: Color(0xFF006C51),
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
+            SizedBox(
+              width: 108,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '\$${result.price.toStringAsFixed(2)} MXN',
+                  style: const TextStyle(
+                    color: Color(0xFF006C51),
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                  ),
+                ),
               ),
             ),
           ],

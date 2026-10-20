@@ -31,7 +31,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.99518273807-0ggmuggl553vp9pm5mmst9m5gsrepkhq</string>
+				<string>$(GOOGLE_REVERSED_CLIENT_ID)</string>
 			</array>
 		</dict>
 	</array>
@@ -40,9 +40,9 @@
 	<key>FLTEnableImpeller</key>
 	<false/>
 	<key>GIDClientID</key>
-	<string>99518273807-0ggmuggl553vp9pm5mmst9m5gsrepkhq.apps.googleusercontent.com</string>
+	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
 	<key>GIDServerClientID</key>
-	<string>99518273807-ru4jfdia2ku61a7vvhvvg3utc7vo6mqn.apps.googleusercontent.com</string>
+	<string>$(GOOGLE_WEB_CLIENT_ID)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

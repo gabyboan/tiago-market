@@ -1,209 +1,101 @@
-# Tiago Market Flutter
+# Tiago Market · Flutter
 
-Estado vigente: [diagnóstico del 22/09/2026](../../docs/estado-2026-09-22.md).
-Chedraui: [preflight bloqueado y evidencia](../../docs/chedraui-validation-2026-09-22.md).
+Cliente móvil y multiplataforma para comparar precios observados de comercios
+de México. La versión de la app es `0.2.5+7`.
 
-Demo mínima del cliente Flutter. Incluye:
+Incluye búsqueda, comparación por comercio y sucursal, favoritos, lista de
+compras, acceso invitado, Google Auth y carrito sincronizado por cuenta.
+Muestra fuente y fecha y separa catálogo online de precios locales.
+El checkout prepara un borrador; todavía no procesa pagos ni envíos.
 
-- búsqueda de productos;
-- accesos rápidos;
-- comparación ordenada por precio;
-- cadena, sucursal, fuente y fecha de observación;
-- requiere configuración de Supabase para precios cercanos; sin configuración puede mostrar “API no configurada”.
-- inicio de sesión opcional con Google mediante Supabase Auth.
+## Desarrollo
 
-## Estado de la versión 0.2.3+5
-
-- Filtra precios por sucursal, disponibilidad y frescura; la exigencia de URL
-  de evidencia local y la revalidación de favoritos/lista siguen incompletas.
-- Separa claramente el fallback de precios online de los precios por sucursal.
-- Incluye íconos de Tiago Market en Android, iOS y web.
-- Unifica el ícono de instalación con la canasta de la esquina superior izquierda.
-- La release Android incorpora los `dart-define` locales y Firebase Crashlytics.
-- La APK de desarrollo puede instalarse localmente; una build release requiere
-  un keystore de piloto y nunca usa la firma debug como sustituto.
-
-## Ejecutar demo
+Flutter 3.41.7 es la versión utilizada en CI.
 
 ```bash
 flutter pub get
+cp config/dart_defines.example.json dart_defines.local.json
+# Completar con la configuración pública de un proyecto propio.
 flutter run -d chrome --dart-define-from-file=dart_defines.local.json
 ```
 
-## APK release local
+- `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`: autenticación y RPC de precios.
+- `API_BASE_URL`: categorías y feedback mediante HTTP.
+- `GOOGLE_WEB_CLIENT_ID`: cliente OAuth web para el login nativo de Google.
+- `APP_ENV` y `CRASHLYTICS_ENABLED`: entorno y diagnóstico opcional.
 
-Preparar `android/key.properties` con una clave propia de Tiago y el archivo
-`android/app/google-services.json` correspondiente al paquete Android. Ambos
-archivos y el keystore quedan fuera de Git. Conservar una copia privada de la
-clave y sus contraseñas: las futuras actualizaciones deben usar la misma firma.
+La app consulta `nearby_prices_v4`, `online_prices_v4` y `nearby_branches`.
+El proyecto necesita esas RPC y datos publicados para responder búsquedas.
+El backend Node y la Edge Function histórica tienen rutas distintas; el
+código desplegado de esa función no está incluido en este checkout.
 
-```bash
-cp config/dart_defines.release.example.json dart_defines.release.local.json
-# Completar con la configuración pública del proyecto.
-python3 tools/build_android_release.py --check-only
-python3 tools/build_android_release.py
-```
+La clave pública de Supabase está diseñada para clientes. Nunca usar
+`SUPABASE_SERVICE_ROLE_KEY`, conexiones PostgreSQL o secretos OAuth en
+`dart-define`: los valores se pueden extraer del build.
 
-El resultado es `build/app/outputs/flutter-apk/app-release.apk`. El script exige
-URLs HTTPS, claves públicas y Crashlytics activo; rechaza variables desconocidas
-y claves privilegiadas. `dart-define` se puede extraer de la APK: no es un lugar
-para secretos. `APP_ENV=pilot` identifica esta versión en los diagnósticos.
+## Login con Google
 
-Crashlytics se activa sólo en release Android mediante `CRASHLYTICS_ENABLED=true`.
-Firebase recibe los errores de Flutter y los errores asíncronos no capturados;
-los handlers conservan la integración opcional con Sentry. Referencia:
-[configuración oficial de Crashlytics](https://firebase.google.com/docs/crashlytics/flutter/get-started).
-La recepción del primer informe se debe comprobar en un dispositivo y en Firebase.
+Configurar el proveedor Google en Supabase con un cliente OAuth propio.
+La redirección web del proveedor es
+`https://<project-ref>.supabase.co/auth/v1/callback`.
+Agregar el origen web de desarrollo y
+`com.tiagomarket.app://login-callback/` en las URLs permitidas de Supabase.
+Para Android, registrar paquete y huellas de firma en los clientes OAuth
+correspondientes. Los JSON descargados de Google permanecen fuera de Git.
 
-El login nativo de Google requiere registrar las huellas SHA-1/SHA-256 de la
-firma release en Firebase/Google Cloud y actualizar `google-services.json`.
-Una instalación anterior firmada con debug no puede actualizarse con esta firma;
-desinstalarla borra sus datos locales. No hacerlo sin guardar listas y favoritos.
+Para iOS, copiar `ios/Flutter/Google.example.xcconfig` a
+`ios/Flutter/Google.local.xcconfig` y completar los identificadores OAuth y el
+esquema invertido del cliente iOS. Usar los mismos IDs en
+`GOOGLE_IOS_CLIENT_ID` y `GOOGLE_WEB_CLIENT_ID` de los Dart defines.
+Debug y Release incluyen ese archivo local opcional; `Info.plist` utiliza
+variables de build en lugar de identificadores de una cuenta concreta.
 
-Para regenerar los íconos desde el mismo glifo Material de la cabecera:
-
-```bash
-uv run --with fonttools --with cairosvg --with pillow tools/generate_brand_icons.py
-```
-
-Los SVG y la licencia de Material Icons están en `assets/branding/`.
-
-## Mantenimiento de dependencias
-
-Este proyecto usa Flutter/Dart y gestiona paquetes con `flutter pub`, no con `pnpm` ni `npm`.
-
-Para revisar actualizaciones de dependencias puedes usar:
-
-```bash
-flutter pub outdated
-```
-
-Para instalar dependencias y actualizar el lockfile:
-
-```bash
-flutter pub get
-```
-
-Para actualizar las dependencias compatibles automáticamente:
-
-```bash
-flutter pub upgrade
-```
+El callback móvil actual usa un esquema personalizado. La publicación en
+stores requiere completar App Links/Universal Links y revisar consentimiento
+y políticas de privacidad.
 
 ## Pruebas
 
 ```bash
-flutter test test/widget_test.dart test/search_controller_test.dart
+flutter analyze
+flutter test
+python3 -m unittest discover -s tools -p 'test_release_config.py'
+python3 -m unittest discover -s tools/ingestion/python -p 'test_*.py'
 ```
 
-## Flujo de navegación y auth
+Las pruebas usan fixtures y servicios simulados. Los tests de sesión y
+persistencia cubren separación de cuentas, restauración y carrito invitado.
 
-- La aplicación arranca en `AuthFlowGate`.
-- Si no hay sesión válida, se muestra `WelcomePage`.
-- `WelcomePage` permite continuar como invitado o iniciar sesión con Google.
-- Si el usuario inicia sesión y no tiene rol, se muestra `RoleSelectionPage`.
-- Si el rol es `buyer`, se muestra `SearchPage`.
-- Si el rol es `seller`, se muestra `BusinessComingSoonPage`.
-- El botón de continuar como invitado usa la ruta nombrada `AppRoutes.search`.
-- Las rutas principales están definidas en `lib/src/navigation/app_routes.dart`.
+## APK release local
 
-## Conectar API
+Preparar una clave de firma propia, `android/key.properties` y
+`android/app/google-services.json`. Conservar una copia privada de la clave y
+sus contraseñas: las actualizaciones requieren la misma firma.
+Estos archivos quedan excluidos de Git.
 
 ```bash
-flutter run -d chrome \
-  --dart-define=SUPABASE_URL=https://<ref>.supabase.co \
-  --dart-define=SUPABASE_PUBLISHABLE_KEY=<public-publishable-key> \
-  --dart-define=API_BASE_URL=https://<ref>.supabase.co/functions/v1/api
+cp config/dart_defines.release.example.json dart_defines.release.local.json
+# Completar la configuración pública del piloto.
+python3 tools/build_android_release.py --check-only
+python3 tools/build_android_release.py
 ```
 
-Con Supabase configurado, los precios se consultan por `nearby_prices_v4` y
-`online_prices_v4`, que incluyen metadatos estructurados de variante y conteo
-de imágenes. El conteo de sucursales usa `nearby_branches`.
-`API_BASE_URL` se usa para categorías y feedback. El fallback HTTP online
-no tiene una ruta equivalente en la Edge Function actual (404).
+El script valida configuración pública, URLs HTTPS, firma real y Crashlytics.
+El resultado es `build/app/outputs/flutter-apk/app-release.apk`.
+Una build release no sustituye una firma faltante por la firma debug.
+El workflow `android-release.yml` admite ejecución manual con secretos
+configurados en GitHub Actions y no publica en Play Store.
 
-La aplicación nunca debe incluir claves secretas de Supabase ni ejecutar
-scraping. Para Auth y RPC usa una clave pública `publishable`; no consulta
-directamente las tablas de precios.
+## Organización
 
-## Scraping y geolocalización
+- `lib/auth`: integración de autenticación.
+- `lib/src/controllers`: estado de búsqueda y comparación.
+- `lib/src/models`: productos, carrito y borrador de checkout.
+- `lib/src/services`: acceso a API y persistencia.
+- `lib/src/pages` y `lib/src/widgets`: pantallas y componentes de interfaz.
+- `tools/ingestion`: captura externa; no se ejecuta dentro de la app.
+- `supabase`: migraciones y pruebas de contratos.
 
-El cliente Flutter no ejecuta scraping. La recolección de precios debe hacerse
-desde jobs externos y publicarse en Supabase/API. El estado actual, el pipeline
-recomendado, las tiendas candidatas y el roadmap para precios por sucursal están
-documentados en [`docs/scraping-and-geolocation.md`](docs/scraping-and-geolocation.md).
-Los registros reales deben pasar por staging con URL oficial, fecha de
-observación, evidencia, confianza, sucursal y coordenadas mexicanas. Los precios
-puramente online no se publican en la experiencia principal; quedarán para una
-sección separada más adelante.
-
-Las fotos siguen la misma política de bajo almacenamiento: sólo se guarda la
-dirección URL proporcionada por la tienda. No se descargan imágenes ni se usa
-Supabase Storage para copiarlas.
-
-Primer conector geolocalizable validado: The Home Depot Mexico, mediante
-`tools/ingestion/bin/home_depot_mx_scraper.dart`. El scraper enlaza precio y
-stock a sucursales oficiales del locator antes de generar NDJSON.
-
-## Login con Google
-
-La guía `docs/google-oauth-setup.md` referenciada anteriormente no está en este
-checkout. El login real en dispositivo sigue pendiente de verificación.
-
-1. En Google Cloud, crea un cliente OAuth Web y agrega como URI de redirección:
-   `https://<project-ref>.supabase.co/auth/v1/callback`.
-   Debe coincidir exactamente, incluyendo esquema y barra final si la hubiera.
-2. En Supabase, abre **Authentication > Providers > Google**, habilita el
-   proveedor y carga el Client ID y Client Secret de Google.
-3. En **Authentication > URL Configuration**, agrega las URLs web donde se
-   ejecutará Flutter y `com.tiagomarket.app://login-callback/` como redirect
-   URLs permitidas.
-4. Inicia la aplicación pasando la URL y la clave pública `anon`/publishable:
-
-```bash
-flutter run -d chrome \
-  --dart-define=SUPABASE_URL=https://<project-ref>.supabase.co \
-  --dart-define=SUPABASE_PUBLISHABLE_KEY=<public-publishable-key>
-```
-
-Para combinar autenticación y API, agrega también `--dart-define=API_BASE_URL`.
-La clave pública de Supabase está diseñada para clientes. La variable histórica
-`SUPABASE_ANON_KEY` también funciona, pero nunca pases la
-`SUPABASE_SERVICE_ROLE_KEY` a Flutter.
-
-Para desarrollo Android local se puede crear un archivo ignorado por Git:
-
-```json
-{
-  "SUPABASE_URL": "https://<project-ref>.supabase.co",
-  "SUPABASE_PUBLISHABLE_KEY": "<public-publishable-key>",
-  "API_BASE_URL": "https://api.example.com"
-}
-```
-
-Luego ejecutar:
-
-```bash
-flutter run --dart-define-from-file=dart_defines.local.json
-flutter build apk --debug --dart-define-from-file=dart_defines.local.json
-flutter build apk --release --dart-define-from-file=dart_defines.local.json
-```
-
-`dart-define` se incorpora durante la compilación. Por eso, ejecutar solamente
-`flutter build apk --release` genera una APK sin la configuración de Supabase y
-la pantalla mostrará `Configura Supabase para iniciar sesión`.
-
-El callback móvil usa un esquema personalizado. Es válido para desarrollo, pero
-otra aplicación instalada podría registrar el mismo esquema. Antes de publicar
-en tiendas debe migrarse a Android App Links e iOS Universal Links con un
-dominio controlado.
-
-## Estado de verificación del login
-
-- Verificado: compilación web, análisis estático, tests Flutter, llamada
-  `signInWithOAuth`, escucha de cambios de sesión y configuración del callback
-  móvil.
-- Pendiente: prueba de inicio/cierre de sesión de extremo a extremo contra un
-  proyecto real de Supabase y un cliente OAuth de Google configurado.
-- Pendiente para producción: App Links/Universal Links, branding/verificación
-  del consentimiento de Google y políticas de privacidad.
+Ver [arquitectura](../../docs/architecture.md),
+[ingesta](tools/ingestion/README.md) y
+[contratos de envío y pagos](docs/envio-y-pagos.md).

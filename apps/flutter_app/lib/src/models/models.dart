@@ -143,6 +143,12 @@ class PriceResult {
         ? productName.toLowerCase().trim()
         : normalizedName.toLowerCase().trim();
     final pack = _normalizedPresentation(presentation ?? name);
+    final reviewedKey = canonicalVariantKey?.trim();
+    if (reviewedKey != null &&
+        reviewedKey.startsWith('reviewed:') &&
+        pack != null) {
+      return '$reviewedKey|$pack|$currency';
+    }
     final baseName = name
         .replaceAll(
           RegExp(

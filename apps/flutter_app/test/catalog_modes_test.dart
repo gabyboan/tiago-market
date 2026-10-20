@@ -25,6 +25,7 @@ Map<String, dynamic> row(int i, {bool local = false}) => {
     };
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   test('startup uses online RPC without GPS; pages and categories reach RPC',

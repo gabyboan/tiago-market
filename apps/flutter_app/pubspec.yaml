@@ -1,5 +1,5 @@
 name: tiago_market_app
-description: "A new Flutter project."
+description: "Comparador de precios de comercios de México con listas de compras y trazabilidad de observaciones."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.2.3+5
+version: 0.2.5+7
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
@@ -67,6 +67,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/store_logos/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

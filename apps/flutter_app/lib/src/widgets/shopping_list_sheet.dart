@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:tiago_market_app/auth/auth_account_button.dart';
+import 'package:tiago_market_app/src/config.dart';
 import 'package:tiago_market_app/src/models/models.dart';
+import 'package:tiago_market_app/src/pages/checkout_page.dart';
+import 'package:tiago_market_app/src/widgets/store_logo.dart';
 
 class ShoppingListSheet extends StatefulWidget {
   const ShoppingListSheet({
     required this.items,
     required this.onQuantityChanged,
+    this.signedIn = false,
+    this.persistenceStatus,
+    this.onRetrySync,
     super.key,
   });
 
   final List<ShoppingItem> items;
+  final bool signedIn;
+  final String? persistenceStatus;
+  final Future<void> Function()? onRetrySync;
   final Future<void> Function(ShoppingItem item, int quantity)
       onQuantityChanged;
 
@@ -19,6 +29,14 @@ class ShoppingListSheet extends StatefulWidget {
 
 class _ShoppingListSheetState extends State<ShoppingListSheet> {
   late final List<ShoppingItem> _items = [...widget.items];
+
+  @override
+  void didUpdateWidget(covariant ShoppingListSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _items
+      ..clear()
+      ..addAll(widget.items);
+  }
 
   void _showMessage(String message) {
     if (!mounted) return;
@@ -101,7 +119,8 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
   @override
   Widget build(BuildContext context) {
     final totals = calculateStoreTotals(_items);
-    final grandTotal = totals.fold<double>(0, (sum, total) => sum + total.total);
+    final grandTotal =
+        totals.fold<double>(0, (sum, total) => sum + total.total);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -119,6 +138,18 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
               const Text(
                 'Los totales usan los últimos precios guardados al agregar cada producto.',
               ),
+              if (widget.persistenceStatus != null) ...[
+                const SizedBox(height: 12),
+                Text(widget.persistenceStatus!),
+                if (!widget.signedIn && authEnabled)
+                  const GoogleSignInButton(expanded: true),
+                if (widget.signedIn && widget.onRetrySync != null)
+                  TextButton.icon(
+                    onPressed: widget.onRetrySync,
+                    icon: const Icon(Icons.sync),
+                    label: const Text('Sincronizar carrito'),
+                  ),
+              ],
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -128,9 +159,10 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
                     children: [
                       Text(
                         'Costo estimado',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
                       ),
                       Text(
                         '${_items.length} ${_items.length == 1 ? 'producto' : 'productos'}',
@@ -166,6 +198,19 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: _items.isEmpty
+                    ? null
+                    : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                CheckoutPage(items: List.unmodifiable(_items)),
+                          ),
+                        ),
+                icon: const Icon(Icons.local_shipping_outlined),
+                label: const Text('Preparar envío y pago'),
+              ),
               const SizedBox(height: 18),
               if (_items.isEmpty)
                 const _EmptyState()
@@ -177,6 +222,18 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (item.prices.isNotEmpty)
+                          Row(
+                            children: [
+                              StoreLogo(
+                                storeName: item.prices.first.storeName,
+                                storeSlug: item.prices.first.storeSlug,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                  child: Text(item.prices.first.storeName)),
+                            ],
+                          ),
                         Text('${item.prices.length} precios disponibles'),
                         const SizedBox(height: 4),
                         Text(
@@ -218,6 +275,7 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
                 for (final total in totals)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
+                    leading: StoreLogo(storeName: total.storeName, size: 36),
                     title: Text(total.storeName),
                     subtitle: Text(
                       '${total.coveredItems} de ${_items.length} productos disponibles',

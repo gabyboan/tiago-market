@@ -7,6 +7,8 @@ export default tseslint.config(
     ignores: [
       ".agents/**",
       ".codex/**",
+      ".aider-desk/**",
+      ".local-rescue/**",
       "apps/flutter_app/**",
       "**/dist/**",
       "node_modules/**",
