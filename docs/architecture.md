@@ -43,7 +43,13 @@ sucursales con coordenadas verificadas. Las imágenes de productos se cargan
 desde las URLs de la fuente; los logos de comercios son assets locales con
 origen documentado.
 
-El workflow de la canasta Chedraui–Merco usa un manifiesto acotado. La
+`refresh-online-catalog.yml` renueva automáticamente las observaciones de
+productos existentes dos veces por día. Cada comercio se captura, concilia,
+publica y verifica de forma independiente. Un fallo de una tienda no bloquea
+las demás; las capturas originales y los rechazos se mantienen separados de
+los resúmenes de ejecución públicos.
+
+El workflow manual de la canasta Chedraui–Merco usa un manifiesto acotado. La
 publicación exige que ambas fuentes y todos los productos superen la revisión;
 una captura parcial no basta para publicar.
 
