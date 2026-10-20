@@ -48,6 +48,15 @@ class IdentityTest(unittest.TestCase):
 
 
 class PublicationTest(unittest.TestCase):
+    def test_diagnostics_report_only_categories_without_raw_credentials(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            secret = 'postgresql://postgres:private-password@db.invalid/postgres'
+            (Path(tmp) / 'db.log').write_text(secret + '\nFATAL: password authentication failed')
+            result = refresh.failure_diagnostics(Path(tmp))
+            self.assertEqual(len(result), 1)
+            self.assertIn('password rejected', result[0])
+            self.assertNotIn(secret, str(result))
+
     def test_failed_rollback_never_runs_commit(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'accepted.ndjson'

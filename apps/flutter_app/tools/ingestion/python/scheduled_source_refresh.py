@@ -129,6 +129,26 @@ def public_smoke(config):
     return counts
 
 
+def failure_diagnostics(folder):
+    """Expose controlled error categories, never raw SQL, replies or credentials."""
+    signatures = {
+        'password authentication failed': 'Database password rejected: update the Actions SUPABASE_DB_URL secret.',
+        'tenant or user not found': 'Pooler project/user not found: check the Actions SUPABASE_DB_URL secret.',
+        'network is unreachable': 'Database network unreachable: use the IPv4-compatible Session pooler URI.',
+        'could not translate host name': 'Database hostname could not be resolved.',
+        'connection timed out': 'Database connection timed out.',
+        'permission denied': 'Database role lacks the required permission.',
+        'syntax error': 'Database query syntax failed.',
+        'does not exist': 'Database schema does not match the ingestion contract.',
+        'read-only transaction': 'Database is read-only; check project storage and configuration.',
+    }
+    found = set()
+    for path in folder.rglob('*.log'):
+        content = path.read_text(errors='replace').lower()
+        found.update(message for signature, message in signatures.items() if signature in content)
+    return sorted(found)
+
+
 def refresh(source, folder, config, *, max_pages=100):
     folder.mkdir(parents=True, exist_ok=False)
     report = {'source': source, 'status': 'failed', 'started_at': datetime.now(timezone.utc).isoformat(),
@@ -183,6 +203,7 @@ def refresh(source, folder, config, *, max_pages=100):
             if value:
                 message = message.replace(value, '[REDACTED]')
         report['errors'].append(message)
+        report['diagnostics'] = failure_diagnostics(folder)
     finally:
         report['finished_at'] = datetime.now(timezone.utc).isoformat()
         json_write(folder / 'report.json', report)
