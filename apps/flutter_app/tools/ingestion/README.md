@@ -89,6 +89,10 @@ bloqueo de una tienda no impide renovar las demás. Se respetan robots,
 intervalos y límites de los conectores existentes. No depende de que esté
 encendida una computadora ni de abrir la app.
 
+Antes de iniciar los comercios, un control compartido comprueba la conexión
+PostgreSQL, el esquema del catálogo y la RPC pública. Si falla, detiene la
+matriz y muestra el diagnóstico de configuración sin exponer credenciales.
+
 `python/scheduled_source_refresh.py` concilia cada captura nueva con las
 identidades y presentaciones ya publicadas. Los productos nuevos o ambiguos
 quedan fuera de la publicación automática. Cada lote pasa por el staging
@@ -96,13 +100,19 @@ existente y una transacción de prueba con rollback antes de confirmarse. Se
 conservan las fechas HTTP originales y el historial; volver a procesar una
 captura no renueva su vigencia.
 
+Chedraui y Gran Bodega consultan los identificadores guardados en lotes de
+hasta 50 productos. Se verifica que la API responda únicamente con esos IDs;
+los productos ausentes o con cambios de identidad quedan pendientes. Completar
+esas consultas no se presenta como un recorrido del catálogo completo de la tienda.
+
 Después de publicar, compara precios, fechas, disponibilidad e identidades
 contra el catálogo vigente y prueba la RPC pública de la app. Un catálogo
 vacío o una verificación fallida marca el job como fallido. Una captura que se
 interrumpe puede publicar su parte validada, pero queda marcada como parcial.
 
 Actions requiere `SUPABASE_DB_URL` (URI completa del Session pooler) y
-`SUPABASE_URL` como secretos, y `SUPABASE_PUBLISHABLE_KEY` como variable pública.
+`SUPABASE_URL` como secretos, y `SUPABASE_PUBLISHABLE_KEY` como variable pública
+(también acepta un secreto con ese nombre).
 La conexión de base debe corresponder al mismo proyecto de la RPC. No se usa
 una clave privilegiada en la app ni en la demo.
 
@@ -115,15 +125,19 @@ payloads, SQL y credenciales no se suben como artefactos públicos.
 El workflow `update-chedraui-merco-basket.yml` queda disponible para ejecución
 manual. Usa las ocho fichas de
 `catalogs/chedraui_merco_basket.json` y el secreto `SUPABASE_DB_URL` de Actions.
+Comparte el grupo de concurrencia con la renovación general para que ambas
+ejecuciones no publiquen observaciones de las mismas tiendas simultáneamente.
 
 `python/daily_basket_update.py` revisa ambas fuentes, identidad, presentación,
 unidad, disponibilidad y evidencia antes de publicar la canasta completa en
-una transacción. Si falla una fuente o una ficha requiere revisión, la
+una transacción, luego de comprobarla con rollback. Chedraui admite evidencia
+JSON-LD o el estado VTEX de la ficha, vinculado al SKU, vendedor y moneda.
+Si falla una fuente o una ficha requiere revisión, la
 publicación se bloquea y los snapshots anteriores se conservan.
 
-El workflow guarda reportes y comprobantes durante 30 días como artefactos de
-Actions. Revisar esos artefactos antes de compartirlos; no forman parte del
-código publicado.
+El workflow guarda solamente reportes de revisión y preflight durante 30 días
+como artefactos de Actions. Las páginas capturadas, SQL y logs de base quedan
+en el runner privado y no se adjuntan a los artefactos.
 
 El flujo anterior de Profeco también queda manual. La renovación automática
 del catálogo de la app la realiza `refresh-online-catalog.yml`.

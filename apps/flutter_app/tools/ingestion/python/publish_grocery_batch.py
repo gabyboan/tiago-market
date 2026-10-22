@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+from uuid import UUID
 
 from expand_grocery_sources import SOURCES
 from online_catalog import timestamp
@@ -33,9 +34,23 @@ def registration_sql(sources=None):
 
 
 def ingestion_result(stdout):
-    doc=json.loads(stdout)
+    # stage_ndjson first returns set_config(run_id), then the JSON report.
+    # The Management API exposes only the final result; psql emits both.
+    output=stdout.strip()
+    first,separator,remaining=output.partition('\n')
+    if separator:
+        try:
+            UUID(first.strip())
+        except ValueError:
+            pass
+        else:
+            output=remaining.strip()
+    doc=json.loads(output)
     value=doc['rows'][0]['ingestion_report'] if isinstance(doc,dict) and 'rows' in doc else doc
-    return json.loads(value) if isinstance(value,str) else value
+    result=json.loads(value) if isinstance(value,str) else value
+    if not isinstance(result,dict) or not isinstance(result.get('publishable'),int):
+        raise ValueError('Missing ingestion publication report')
+    return result
 
 
 def file_hash(path):return hashlib.sha256(path.read_bytes()).hexdigest()

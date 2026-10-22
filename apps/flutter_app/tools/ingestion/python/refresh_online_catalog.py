@@ -10,7 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, unquote, urlparse
 
 from daily_basket_update import read_json, read_ndjson, run_logged
 from merco_online_scraper import product_url
@@ -54,8 +54,25 @@ class Database:
         env = os.environ.copy()
         if self.url:
             # Avoid placing connection credentials in process arguments or logs.
-            env['PGDATABASE'] = self.url
-            env['PGCONNECT_TIMEOUT'] = '20'
+            connection = urlparse(self.url)
+            if (connection.scheme not in ('postgres', 'postgresql') or
+                    not connection.hostname or not connection.username or not connection.path.lstrip('/')):
+                raise ValueError('Expected a complete PostgreSQL connection URI')
+            env.pop('PGHOSTADDR', None)
+            env.pop('PGSERVICE', None)
+            env.update(PGHOST=connection.hostname, PGPORT=str(connection.port or 5432),
+                       PGUSER=unquote(connection.username),
+                       PGDATABASE=unquote(connection.path.lstrip('/')),
+                       PGCONNECT_TIMEOUT='20', PGSSLMODE='require')
+            if connection.password is not None:
+                env['PGPASSWORD'] = unquote(connection.password)
+            options = {'sslmode': 'PGSSLMODE', 'connect_timeout': 'PGCONNECT_TIMEOUT',
+                       'sslrootcert': 'PGSSLROOTCERT', 'application_name': 'PGAPPNAME',
+                       'options': 'PGOPTIONS', 'target_session_attrs': 'PGTARGETSESSIONATTRS'}
+            for key, value in parse_qsl(connection.query):
+                if key not in options:
+                    raise ValueError('Unsupported PostgreSQL URI option: ' + key)
+                env[options[key]] = value
             command = ['psql', '-X', '-qAt', '--set', 'ON_ERROR_STOP=1', '--file', str(path)]
         else:
             command = ['supabase', 'db', 'query', '--linked', '--output', 'json', '--file', str(path)]
@@ -65,6 +82,8 @@ class Database:
         output = result.stdout + '\n' + result.stderr
         if self.url:
             output = output.replace(self.url, '[REDACTED_DB_URL]')
+            if connection.password:
+                output = output.replace(unquote(connection.password), '[REDACTED_DB_PASSWORD]')
         output = re.sub(r'postgres(?:ql)?://[^\s]+', '[REDACTED_DB_URL]', output)
         path.with_suffix('.log').write_text(output)
         if result.returncode:

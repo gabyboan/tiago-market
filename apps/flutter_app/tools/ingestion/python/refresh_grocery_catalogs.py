@@ -135,13 +135,16 @@ def currency_from_home(html, adapter):
     return 'MXN' if re.search(pattern, html, re.I) else None
 
 
-def capture_source(source, folder, *, max_pages=60, page_size=None, product_limit=80, seeds=()):
+def capture_source(source, folder, *, max_pages=60, page_size=None, product_limit=80, seeds=(), known_only=False, product_ids=()):
     folder.mkdir(parents=True, exist_ok=False)
     host = SOURCES[source][0]
     adapter = BULK.get(source, 'html')
     client = SafeHttpClient([host], max_requests=min(500, max_pages + product_limit + 6),
                             max_bytes=8 * 1024 * 1024, accepted_statuses=(200, 206))
     rows, rejected, seen, failure, complete, responses = [], [], set(), None, False, 0
+    remaining_urls = set(seeds) if known_only else set()
+    requested_urls = len(remaining_urls)
+    targeted_complete = False
     report = {'source': source, 'adapter': adapter, 'started_at': datetime.now(timezone.utc).isoformat(),
               'limits': {'max_pages': max_pages, 'product_limit': product_limit}, 'published': False}
 
@@ -171,14 +174,26 @@ def capture_source(source, folder, *, max_pages=60, page_size=None, product_limi
                 if currency != 'MXN':
                     raise ValueError('Official homepage did not declare MXN')
             size = page_size or (250 if adapter == 'shopify' else 50 if adapter == 'vtex' else 100)
+            targeted = adapter == 'vtex' and known_only and bool(product_ids)
+            batches = []
+            if targeted:
+                if size > 50 or any(not isinstance(value, str) or not re.fullmatch(r'[0-9]{1,20}', value)
+                                    for value in product_ids):
+                    raise ValueError('Invalid bounded VTEX product identifiers')
+                unique_ids = list(dict.fromkeys(product_ids))
+                batches = [unique_ids[i:i+size] for i in range(0, len(unique_ids), size)]
             for page in range(1, max_pages + 1):
                 if adapter == 'woo':
                     url = f'https://{host}/wp-json/wc/store/v1/products?per_page={size}&page={page}&orderby=id&order=asc'
                 elif adapter == 'shopify':
                     url = f'https://{host}/products.json?limit={size}&page={page}'
                 else:
-                    offset = (page-1)*size
-                    url = f'https://{host}/api/catalog_system/pub/products/search?_from={offset}&_to={offset+size-1}&O=OrderByNameASC'
+                    if targeted:
+                        filters = '&'.join('fq=productId:' + value for value in batches[page-1])
+                        url = f'https://{host}/api/catalog_system/pub/products/search?{filters}&_from=0&_to={size-1}'
+                    else:
+                        offset = (page-1)*size
+                        url = f'https://{host}/api/catalog_system/pub/products/search?_from={offset}&_to={offset+size-1}&O=OrderByNameASC'
                 response = fetch(url)
                 data = json.loads(response.text)
                 products = data.get('products') if adapter == 'shopify' and isinstance(data, dict) else data
@@ -187,7 +202,19 @@ def capture_source(source, folder, *, max_pages=60, page_size=None, product_limi
                 ids = [str(p.get('productId') if adapter == 'vtex' else p.get('id')) for p in products]
                 if any(i in seen or i in ('None', '') for i in ids) or len(ids) != len(set(ids)):
                     raise ValueError('Repeated page or ambiguous product identity; pagination stopped')
+                if targeted and not set(ids).issubset(batches[page-1]):
+                    raise ValueError('VTEX response contains products outside the requested identifiers')
                 seen.update(ids)
+                if known_only:
+                    for product in products:
+                        if adapter == 'woo':
+                            remaining_urls.discard(product.get('permalink'))
+                        elif adapter == 'shopify':
+                            for variant in product.get('variants') or []:
+                                remaining_urls.discard(
+                                    f'https://{host}/products/{product.get("handle")}?variant={variant.get("id")}')
+                        else:
+                            remaining_urls.discard(product.get('link'))
                 if adapter == 'vtex':
                     accepted, issues = parse_vtex(response, currency, size, source=source)
                     rows.extend(accepted); rejected.extend(issues)
@@ -201,12 +228,23 @@ def capture_source(source, folder, *, max_pages=60, page_size=None, product_limi
                             rejected.append({'product_id': product.get('id'), 'reason': str(error)})
                 print(json.dumps({'source': source, 'page': page, 'read': len(seen), 'accepted': len(rows),
                                   'images': sum(bool(r['image_url']) for r in rows)}, ensure_ascii=False), flush=True)
+                if targeted:
+                    rejected.extend({'product_id': value, 'reason': 'Known product absent from current public catalog'}
+                                    for value in set(batches[page-1]) - set(ids))
+                    if page == len(batches):
+                        targeted_complete = True
+                        break
+                    continue
                 if len(products) < size:
                     complete = True
                     break
+                if requested_urls and not remaining_urls:
+                    break  # Every reviewed URL was seen; no discovery is needed.
         else:
-            home = fetch(source_home(source))
-            discovered = product_links(home.text, source)
+            discovered = []
+            if not known_only:
+                home = fetch(source_home(source))
+                discovered = product_links(home.text, source)
             # Previously validated links are fresh HTTP requests, never replays.
             candidates = list(dict.fromkeys(list(seeds) + discovered))[:product_limit]
             json_write(folder / 'candidates.json', candidates)
@@ -231,6 +269,8 @@ def capture_source(source, folder, *, max_pages=60, page_size=None, product_limi
                   accepted=len(rows), images=sum(bool(r['image_url']) for r in rows),
                   available=sum(r['available'] for r in rows), unavailable=sum(not r['available'] for r in rows),
                   full_catalog_traversed=complete, failure=failure, rejected=rejected,
+                  known_catalog_traversed=targeted_complete or (bool(requested_urls) and not remaining_urls),
+                  known_urls_not_seen=len(remaining_urls),
                   rejection_counts=dict(Counter(r['reason'] for r in rejected)),
                   receipts=client.receipts, metrics=dict(client.metrics),
                   status='partial' if failure or rejected or not complete else 'ok')

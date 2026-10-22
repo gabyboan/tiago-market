@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: update-chedraui-merco-basket
+  group: online-grocery-refresh
   cancel-in-progress: false
 
 jobs:
@@ -112,11 +112,14 @@ jobs:
               print(f"| {item['label']} | {item['source']} | {item['status']} | {reasons} |")
           PY
 
-      - name: Upload capture and review report
+      - name: Upload review reports
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: chedraui-merco-daily-${{ github.run_id }}
-          path: ${{ runner.temp }}/tiago-basket-daily
+          path: |
+            ${{ runner.temp }}/tiago-basket-daily/daily-report.json
+            ${{ runner.temp }}/tiago-basket-daily/review-report.json
+            ${{ runner.temp }}/tiago-basket-daily/prepared/preflight.txt
           if-no-files-found: warn
           retention-days: 30

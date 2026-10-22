@@ -78,6 +78,9 @@ export async function updatePrices({
     errors,
     totalTimeMs: Date.now() - startedAt,
   });
+  if (errors > 0) {
+    throw new Error(`La actualización terminó con ${errors} errores y ${savedPrices} precios guardados.`);
+  }
 }
 
 if (process.argv[1]?.endsWith("update-prices.ts")) {

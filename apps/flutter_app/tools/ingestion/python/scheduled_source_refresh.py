@@ -26,15 +26,22 @@ from refresh_online_catalog import Database, ROOT, literal
 def known_sql(source):
     return """select sp.source, sp.store_product_url, sp.external_name, sp.presentation,
        p.normalized_name, p.category, s.slug as store_slug, sp.image_url,
-       (select max(ps.captured_at) from public.price_snapshots ps
-        where ps.store_product_id=sp.id and ps.price_scope='online') as latest_capture
+       latest.captured_at as latest_capture, latest.source_product_id
 from public.store_products sp
 join public.products p on p.id=sp.product_id
 join public.stores s on s.id=sp.store_id
+join lateral (
+  select ps.captured_at,
+         coalesce(ps.raw_payload#>>'{raw_payload,evidence,productId}',
+                  ps.raw_payload#>>'{raw_payload,product_id}',
+                  ps.raw_payload#>>'{evidence,productId}',
+                  ps.raw_payload->>'product_id') as source_product_id
+  from public.price_snapshots ps
+  where ps.store_product_id=sp.id and ps.price_scope='online' and ps.branch_id is null
+  order by ps.captured_at desc limit 1
+) latest on true
 where sp.branch_id is null and s.enabled and s.country='MX'
   and sp.source=""" + literal(source) + """
-  and exists (select 1 from public.price_snapshots ps
-              where ps.store_product_id=sp.id and ps.price_scope='online')
 order by sp.store_product_url, p.normalized_name
 """
 
@@ -129,37 +136,86 @@ def public_smoke(config):
     return counts
 
 
+def failure_diagnostics(folder):
+    """Expose controlled error categories, never raw SQL, replies or credentials."""
+    signatures = {
+        'password authentication failed': 'Database password rejected: update the Actions SUPABASE_DB_URL secret.',
+        'tenant or user not found': 'Pooler project/user not found: check the Actions SUPABASE_DB_URL secret.',
+        'network is unreachable': 'Database network unreachable: use the IPv4-compatible Session pooler URI.',
+        'could not translate host name': 'Database hostname could not be resolved.',
+        'connection timed out': 'Database connection timed out.',
+        'permission denied': 'Database role lacks the required permission.',
+        'syntax error': 'Database query syntax failed.',
+        'does not exist': 'Database schema does not match the ingestion contract.',
+        'read-only transaction': 'Database is read-only; check project storage and configuration.',
+    }
+    found = set()
+    for path in folder.rglob('*.log'):
+        content = path.read_text(errors='replace').lower()
+        found.update(message for signature, message in signatures.items() if signature in content)
+    return sorted(found)
+
+
+def validate_config(config):
+    if not config.get('SUPABASE_URL') or not config.get('SUPABASE_PUBLISHABLE_KEY'):
+        raise RuntimeError('Missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY in Actions configuration')
+    connection = urlsplit(os.environ.get('SUPABASE_DB_URL', ''))
+    project = urlsplit(config['SUPABASE_URL']).hostname
+    project_ref = project.removesuffix('.supabase.co') if project else ''
+    if (connection.scheme not in ('postgres', 'postgresql') or not connection.password
+            or not connection.path.lstrip('/') or not project_ref or
+            not (connection.hostname == 'db.' + project
+                 or ((connection.hostname or '').endswith('.pooler.supabase.com')
+                     and connection.username == 'postgres.' + project_ref))):
+        raise RuntimeError('SUPABASE_DB_URL must be a complete PostgreSQL URI for the configured Supabase project')
+
+
+def check_config(folder, config):
+    """One real read and a public RPC check before starting the store matrix."""
+    folder.mkdir(parents=True, exist_ok=True)
+    try:
+        validate_config(config)
+        db = Database(folder)
+        db.query(known_sql('compro-super-mx') + ' limit 1', 'preflight')
+        public_smoke(config)
+    except Exception:
+        diagnostics = failure_diagnostics(folder)
+        print('::error::Refresh preflight failed. Check database and public RPC configuration.')
+        for diagnostic in diagnostics:
+            print('::error::' + diagnostic)
+        return 1
+    print('Database connection, catalog schema and public RPC checks passed.')
+    return 0
+
+
 def refresh(source, folder, config, *, max_pages=100):
     folder.mkdir(parents=True, exist_ok=False)
     report = {'source': source, 'status': 'failed', 'started_at': datetime.now(timezone.utc).isoformat(),
               'known': 0, 'captured': 0, 'accepted': 0, 'held': 0, 'inserted': 0, 'errors': []}
     try:
-        if not config.get('SUPABASE_URL') or not config.get('SUPABASE_PUBLISHABLE_KEY'):
-            raise RuntimeError('Missing public RPC configuration')
-        connection = urlsplit(os.environ.get('SUPABASE_DB_URL', ''))
-        project = urlsplit(config['SUPABASE_URL']).hostname
-        project_ref = project.removesuffix('.supabase.co') if project else ''
-        if (connection.scheme not in ('postgres', 'postgresql') or not connection.password
-                or not project_ref or
-                not (connection.hostname == 'db.' + project
-                     or ((connection.hostname or '').endswith('.pooler.supabase.com')
-                         and connection.username == 'postgres.' + project_ref))):
-            raise RuntimeError('Database connection must target the configured Supabase project')
+        validate_config(config)
         db = Database(folder)
         known = db.query(known_sql(source), 'known-listings')
         report['known'] = len(known)
         if not known:
             raise RuntimeError('No previously published listings for this source')
         json_write(folder / 'known.json', known)
+        product_ids = []
+        if source in ('chedraui-mx', 'gran-bodega-mx'):
+            product_ids = [row.get('source_product_id') for row in known]
+            if any(not isinstance(value, str) or not value.isdecimal() for value in product_ids):
+                raise RuntimeError('Missing reviewed VTEX product identifiers; catalog review required')
         capture = capture_source(source, folder / 'capture', max_pages=max_pages,
-                                 product_limit=300, seeds=[r['store_product_url'] for r in known])
+                                 product_limit=300, seeds=[r['store_product_url'] for r in known],
+                                 known_only=True, product_ids=product_ids)
         raw = read_ndjson(folder / 'capture/observations.ndjson')
         report['captured'] = len(raw)
         rows, held = prepare_existing(raw, known)
         report.update(accepted=len(rows), held=len(held),
                       not_refreshed=max(0, len(known) - len(rows)),
                       capture_failure=capture.get('failure'),
-                      catalog_complete=capture.get('full_catalog_traversed', False))
+                      catalog_complete=capture.get('full_catalog_traversed', False),
+                      known_catalog_complete=capture.get('known_catalog_traversed', False))
         json_write(folder / 'held-private.json', held)
         if not rows:
             raise RuntimeError('No valid observations of existing products; nothing was published')
@@ -170,7 +226,8 @@ def refresh(source, folder, config, *, max_pages=100):
         report['inserted'] = result['inserted_snapshots']
         report['verification'] = verify_database(db, rows)
         report['public_search_counts'] = public_smoke(config)
-        if capture.get('failure') or (source in BULK and not report['catalog_complete']):
+        if capture.get('failure') or (source in BULK and not report['catalog_complete']
+                                      and not report['known_catalog_complete']):
             report['status'] = 'partial'
             report['errors'].append('Capture stopped early; only validated observations were published')
         else:
@@ -183,6 +240,7 @@ def refresh(source, folder, config, *, max_pages=100):
             if value:
                 message = message.replace(value, '[REDACTED]')
         report['errors'].append(message)
+        report['diagnostics'] = failure_diagnostics(folder)
     finally:
         report['finished_at'] = datetime.now(timezone.utc).isoformat()
         json_write(folder / 'report.json', report)
@@ -192,7 +250,8 @@ def refresh(source, folder, config, *, max_pages=100):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--source', choices=tuple(SOURCES), required=True)
+    parser.add_argument('--source', choices=tuple(SOURCES))
+    parser.add_argument('--check-config', action='store_true')
     parser.add_argument('--work-dir', type=Path, required=True)
     parser.add_argument('--max-pages', type=int, default=100)
     args = parser.parse_args()
@@ -200,6 +259,10 @@ def main():
         parser.error('--max-pages must be between 1 and 100')
     config = {key: os.environ.get(key, '') for key in
               ('SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY')}
+    if args.check_config:
+        return check_config(args.work_dir.resolve(), config)
+    if not args.source:
+        parser.error('--source is required unless --check-config is used')
     report = refresh(args.source, args.work_dir.resolve(), config, max_pages=args.max_pages)
     return 0 if report['status'] == 'ok' else 1
 

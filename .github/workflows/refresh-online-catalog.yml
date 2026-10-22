@@ -41,6 +41,18 @@ jobs:
       matrix: ${{ steps.sources.outputs.matrix }}
     steps:
       - uses: actions/checkout@v6
+      - name: Check shared database and public catalog configuration
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install --yes postgresql-client
+          fi
+          python3 apps/flutter_app/tools/ingestion/python/scheduled_source_refresh.py \
+            --check-config --work-dir "$RUNNER_TEMP/catalog-preflight"
       - id: sources
         env:
           SELECTED_SOURCE: ${{ inputs.source || 'all' }}
@@ -87,7 +99,7 @@ jobs:
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_PUBLISHABLE_KEY }}
           SOURCE: ${{ matrix.source }}
         run: |
           test -n "$SUPABASE_DB_URL"
@@ -115,6 +127,8 @@ jobs:
           print(f"- Public search counts: {report.get('public_search_counts', {})}")
           for error in report['errors']:
               print(f'- Error: {error}')
+          for diagnostic in report.get('diagnostics', []):
+              print(f'- Diagnostic: {diagnostic}')
           PY
       - name: Upload counts and verification summary only
         if: always()

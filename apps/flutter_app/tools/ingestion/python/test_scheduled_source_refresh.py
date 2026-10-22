@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 import scheduled_source_refresh as refresh
 from refresh_grocery_catalogs import parse_woo_product
 from test_refresh_grocery_catalogs import response, woo
+from refresh_online_catalog import Database
 
 
 def fixture():
@@ -48,6 +49,34 @@ class IdentityTest(unittest.TestCase):
 
 
 class PublicationTest(unittest.TestCase):
+    def test_psql_uses_remote_host_and_database_name_without_uri_in_arguments(self):
+        connection = 'postgresql://postgres.fixture:p%40ss%25word@aws-0-region.pooler.supabase.com:5432/postgres?sslmode=require'
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.dict(refresh.os.environ, {'SUPABASE_DB_URL': connection}), \
+                patch('refresh_online_catalog.shutil.which', return_value='/usr/bin/psql'), \
+                patch('refresh_online_catalog.subprocess.run', return_value=Mock(
+                    returncode=0, stdout='[]', stderr='')) as run:
+            db = Database(Path(tmp))
+            db.execute('select 1', 'fixture')
+            command = run.call_args.args[0]
+            env = run.call_args.kwargs['env']
+            self.assertEqual(env['PGHOST'], 'aws-0-region.pooler.supabase.com')
+            self.assertEqual(env['PGDATABASE'], 'postgres')
+            self.assertEqual(env['PGUSER'], 'postgres.fixture')
+            self.assertEqual(env['PGPASSWORD'], 'p@ss%word')
+            self.assertEqual(env['PGSSLMODE'], 'require')
+            self.assertNotIn(connection, str(command))
+            self.assertNotIn('p@ss%word', str(command))
+
+    def test_diagnostics_report_only_categories_without_raw_credentials(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            secret = 'postgresql://postgres:private-password@db.invalid/postgres'
+            (Path(tmp) / 'db.log').write_text(secret + '\nFATAL: password authentication failed')
+            result = refresh.failure_diagnostics(Path(tmp))
+            self.assertEqual(len(result), 1)
+            self.assertIn('password rejected', result[0])
+            self.assertNotIn(secret, str(result))
+
     def test_failed_rollback_never_runs_commit(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'accepted.ndjson'
@@ -82,13 +111,15 @@ class OrchestrationTest(unittest.TestCase):
                        'SUPABASE_PUBLISHABLE_KEY': 'public-fixture'}
         self.connection = 'postgresql://postgres.fixture:fixture-password@aws-0-region.pooler.supabase.com/postgres'
 
-    def execute(self, capture_failure=None, rows=None, verify_error=None):
+    def execute(self, capture_failure=None, rows=None, verify_error=None,
+                catalog_complete=True, known_catalog_complete=False):
         db = Mock()
         db.query.return_value = [self.known]
         with patch.dict(refresh.os.environ, {'SUPABASE_DB_URL': self.connection}), \
                 patch.object(refresh, 'Database', return_value=db), \
                 patch.object(refresh, 'capture_source', return_value={
-                    'failure': capture_failure, 'full_catalog_traversed': True}), \
+                    'failure': capture_failure, 'full_catalog_traversed': catalog_complete,
+                    'known_catalog_traversed': known_catalog_complete}), \
                 patch.object(refresh, 'read_ndjson', return_value=[self.row] if rows is None else rows), \
                 patch.object(refresh, 'publish', return_value={'inserted_snapshots': 1}) as publish, \
                 patch.object(refresh, 'verify_database', side_effect=verify_error,
@@ -116,6 +147,13 @@ class OrchestrationTest(unittest.TestCase):
         self.assertEqual(report['status'], 'partial')
         publish.assert_called_once()
 
+    def test_complete_known_catalog_does_not_require_discovering_new_products(self):
+        report, publish = self.execute(catalog_complete=False, known_catalog_complete=True)
+        self.assertEqual(report['status'], 'ok')
+        self.assertFalse(report['catalog_complete'])
+        self.assertTrue(report['known_catalog_complete'])
+        publish.assert_called_once()
+
     def test_failed_post_publication_verification_cannot_report_success(self):
         report, _ = self.execute(verify_error=RuntimeError('Verification failed'))
         self.assertEqual(report['status'], 'failed')
@@ -133,6 +171,21 @@ class OrchestrationTest(unittest.TestCase):
             report = refresh.refresh('fenix-mx', self.folder,
                                      self.config | {'SUPABASE_URL': 'https://other.supabase.co'})
         self.assertEqual(report['status'], 'failed')
+        db.assert_not_called()
+
+    def test_preflight_checks_real_database_and_public_rpc(self):
+        with patch.dict(refresh.os.environ, {'SUPABASE_DB_URL': self.connection}), \
+                patch.object(refresh, 'Database') as db, \
+                patch.object(refresh, 'public_smoke') as smoke, redirect_stdout(io.StringIO()):
+            self.assertEqual(refresh.check_config(self.folder, self.config), 0)
+        db.return_value.query.assert_called_once()
+        smoke.assert_called_once_with(self.config)
+
+    def test_preflight_rejects_wrong_project_before_connecting(self):
+        with patch.dict(refresh.os.environ, {'SUPABASE_DB_URL': self.connection}), \
+                patch.object(refresh, 'Database') as db, redirect_stdout(io.StringIO()):
+            self.assertEqual(refresh.check_config(
+                self.folder, self.config | {'SUPABASE_URL': 'https://other.supabase.co'}), 1)
         db.assert_not_called()
 
 

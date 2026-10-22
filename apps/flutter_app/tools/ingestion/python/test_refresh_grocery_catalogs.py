@@ -114,6 +114,63 @@ class BulkIntegrityTests(unittest.TestCase):
         self.assertIn('Repeated page',report['failure'])
         self.assertFalse(report['full_catalog_traversed'])
 
+    def test_refresh_stops_after_every_known_url_without_claiming_full_catalog(self):
+        requests=[]
+        class Client:
+            receipts=[];metrics={}
+            def get(self,url):
+                requests.append(url)
+                return response([woo()],url)
+        with tempfile.TemporaryDirectory() as tmp,patch('refresh_grocery_catalogs.SafeHttpClient',return_value=Client()):
+            report=capture_source('fenix-mx',Path(tmp)/'capture',max_pages=3,page_size=1,
+                                  seeds=[woo()['permalink']],known_only=True)
+        self.assertEqual(len(requests),1)
+        self.assertIsNone(report['failure'])
+        self.assertTrue(report['known_catalog_traversed'])
+        self.assertFalse(report['full_catalog_traversed'])
+
+    def test_vtex_refresh_batches_saved_ids_and_continues_after_a_missing_product(self):
+        from test_expand_grocery_sources import vtex
+        requests=[]
+        def product(identifier):
+            item=vtex();item['productId']=identifier
+            item['link']=f'https://www.lagranbodega.com.mx/leche-{identifier}/p'
+            return item
+        class Client:
+            receipts=[];metrics={}
+            def get(self,url):
+                requests.append(url)
+                if '/api/' not in url:return response('{"currency":"MXN"}',url)
+                if 'fq=productId:1&fq=productId:2&' in url:return response([product('1')],url)
+                if 'fq=productId:3&' in url:return response([product('3')],url)
+                raise AssertionError('Unexpected catalog scan')
+        with tempfile.TemporaryDirectory() as tmp,patch('refresh_grocery_catalogs.SafeHttpClient',return_value=Client()):
+            report=capture_source('gran-bodega-mx',Path(tmp)/'capture',page_size=2,
+                                  known_only=True,product_ids=['1','2','3'],
+                                  seeds=[product(i)['link'] for i in ['1','2','3']])
+        self.assertEqual(len(requests),3)
+        self.assertIsNone(report['failure'])
+        self.assertEqual(report['accepted'],2)
+        self.assertTrue(report['known_catalog_traversed'])
+        self.assertFalse(report['full_catalog_traversed'])
+        self.assertEqual(report['known_urls_not_seen'],1)
+        self.assertIn('absent',report['rejected'][0]['reason'])
+
+    def test_vtex_filters_must_not_return_unrequested_products(self):
+        from test_expand_grocery_sources import vtex
+        class Client:
+            receipts=[];metrics={}
+            def get(self,url):
+                if '/api/' not in url:return response('{"currency":"MXN"}',url)
+                product=vtex();product['productId']='999'
+                return response([product],url)
+        with tempfile.TemporaryDirectory() as tmp,patch('refresh_grocery_catalogs.SafeHttpClient',return_value=Client()):
+            report=capture_source('gran-bodega-mx',Path(tmp)/'capture',known_only=True,
+                                  product_ids=['1'],seeds=['https://www.lagranbodega.com.mx/leche-1/p'])
+        self.assertEqual(report['accepted'],0)
+        self.assertIn('outside',report['failure'])
+        self.assertFalse(report['known_catalog_traversed'])
+
     def test_removed_product_does_not_stop_remaining_html_products(self):
         from test_expand_grocery_sources import html
         class Client:
@@ -127,6 +184,23 @@ class BulkIntegrityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp,patch('refresh_grocery_catalogs.SafeHttpClient',return_value=Client()):
             report=capture_source('scorpion-mx',Path(tmp)/'capture',seeds=seeds)
         self.assertEqual(report['accepted'],1);self.assertEqual(len(report['rejected']),1)
+        self.assertIsNone(report['failure'])
+
+    def test_scheduled_html_refresh_requests_only_previously_reviewed_urls(self):
+        from test_expand_grocery_sources import html
+        url='https://www.scorpion.com.mx/tienda/valid.html'
+        requested=[]
+        class Client:
+            receipts=[];metrics={}
+            def get(self,target):
+                requested.append(target)
+                if target != url:raise AssertionError('Unexpected discovery request')
+                return response(html({'@type':'Product','name':'Arroz Fixture 500 g','sku':'fixture',
+                    'offers':{'@type':'Offer','price':12.5,'priceCurrency':'MXN','availability':'InStock'}}),target)
+        with tempfile.TemporaryDirectory() as tmp,patch('refresh_grocery_catalogs.SafeHttpClient',return_value=Client()):
+            report=capture_source('scorpion-mx',Path(tmp)/'capture',seeds=[url],known_only=True)
+        self.assertEqual(requested,[url])
+        self.assertEqual(report['accepted'],1)
         self.assertIsNone(report['failure'])
 
 

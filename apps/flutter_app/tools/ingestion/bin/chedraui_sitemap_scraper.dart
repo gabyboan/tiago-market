@@ -248,6 +248,10 @@ Map<String, Object?>? parseChedrauiProductPage({
       return null;
     }
   }
+  if (products.isEmpty) {
+    final stateProduct = _vtexStateProduct(html, productUrl, productId);
+    if (stateProduct != null) products.add(stateProduct);
+  }
   if (products.length != 1) return null;
   final product = products.single;
   final offers = _jsonObjects(product['offers'])
@@ -313,8 +317,13 @@ Map<String, Object?>? parseChedrauiProductPage({
   final rawPayload = <String, Object?>{
     'source': 'chedraui_product_page',
     'product_id': productId,
-    'json_ld_product': product,
-    'price_evidence': 'sku_bound_json_ld_offer',
+    if (product['_vtex_evidence'] != null)
+      'vtex_product_state': product['_vtex_evidence']
+    else
+      'json_ld_product': product,
+    'price_evidence': product['_vtex_evidence'] != null
+        ? 'sku_bound_vtex_state_offer'
+        : 'sku_bound_json_ld_offer',
   };
 
   final record = <String, Object?>{
@@ -358,6 +367,132 @@ Map<String, Object?>? parseChedrauiProductPage({
   ].join('|'));
 
   return record;
+}
+
+Map<String, dynamic>? _vtexStateProduct(
+    String html, String productUrl, String productId) {
+  Map<String, dynamic>? template(String name) {
+    final matches = RegExp(
+      r'<template\b([^>]*)>\s*<script\b[^>]*>(.*?)</script>\s*</template>',
+      caseSensitive: false,
+      dotAll: true,
+    ).allMatches(html).where((match) =>
+        RegExp('data-varname=["\']$name["\']').hasMatch(match.group(1)!) &&
+        !match.group(1)!.contains('data-field='));
+    if (matches.length != 1) return null;
+    try {
+      final value = jsonDecode(matches.single.group(2)!);
+      return value is Map<String, dynamic> ? value : null;
+    } on FormatException {
+      return null;
+    }
+  }
+
+  final runtime = template('__RUNTIME__');
+  final state = template('__STATE__');
+  if (runtime == null || state == null) return null;
+  final culture = runtime['culture'];
+  final route = runtime['route'];
+  final uri = Uri.parse(productUrl);
+  if (runtime['account'] != 'chedrauimx' ||
+      culture is! Map ||
+      culture['currency'] != 'MXN' ||
+      route is! Map ||
+      route['id'] != 'store.product' ||
+      route['canonicalPath'] != uri.path ||
+      route['params'] is! Map ||
+      route['params']['id'] != productId) {
+    return null;
+  }
+  final slug = uri.path.split('/')[1];
+  final product = state['Product:$slug'];
+  if (product is! Map ||
+      product['productId'] != productId ||
+      product['linkText'] != slug ||
+      product['items'] is! List ||
+      (product['items'] as List).length != 1) {
+    return null;
+  }
+
+  Map? resolve(Object? reference) {
+    if (reference is! Map ||
+        reference['type'] != 'id' ||
+        reference['id'] is! String) {
+      return null;
+    }
+    final value = state[reference['id']];
+    return value is Map ? value : null;
+  }
+
+  final sku = resolve((product['items'] as List).single);
+  if (sku == null ||
+      sku['itemId'] != productId ||
+      sku['measurementUnit'] != 'un' ||
+      sku['unitMultiplier'] != 1 ||
+      sku['sellers'] is! List ||
+      (sku['sellers'] as List).length != 1) {
+    return null;
+  }
+  final seller = resolve((sku['sellers'] as List).single);
+  if (seller == null ||
+      seller['sellerId'] != '1' ||
+      seller['sellerName'] != 'Chedraui') {
+    return null;
+  }
+  final offer = resolve(seller['commertialOffer']);
+  if (offer == null ||
+      offer['Price'] is! num ||
+      offer['ListPrice'] != offer['Price'] ||
+      offer['AvailableQuantity'] is! int ||
+      (offer['AvailableQuantity'] as int) < 0) {
+    return null;
+  }
+  String? image;
+  if (sku['images'] is List && (sku['images'] as List).isNotEmpty) {
+    final value = resolve((sku['images'] as List).first)?['imageUrl'];
+    if (value is String) image = value;
+  }
+  return {
+    '@type': 'Product', '@id': productUrl, 'mpn': productId, 'sku': productId,
+    'name': product['productName'], 'image': image,
+    'offers': {
+      '@type': 'Offer',
+      'sku': productId,
+      'price': offer['Price'],
+      'priceCurrency': culture['currency'],
+      'availability': (offer['AvailableQuantity'] as int) > 0
+          ? 'https://schema.org/InStock'
+          : 'https://schema.org/OutOfStock',
+      'priceValidUntil': offer['PriceValidUntil'],
+      'seller': {'name': seller['sellerName']},
+    },
+    // Retain the original bound fields, excluding checkout tokens and sessions.
+    '_vtex_evidence': {
+      'culture': {'currency': culture['currency']},
+      'canonical_path': route['canonicalPath'],
+      'product': {
+        for (final key in ['productId', 'productName', 'linkText'])
+          key: product[key]
+      },
+      'sku': {
+        for (final key in ['itemId', 'measurementUnit', 'unitMultiplier'])
+          key: sku[key]
+      },
+      'seller': {
+        'sellerId': seller['sellerId'],
+        'sellerName': seller['sellerName']
+      },
+      'offer': {
+        for (final key in [
+          'Price',
+          'ListPrice',
+          'AvailableQuantity',
+          'PriceValidUntil'
+        ])
+          key: offer[key]
+      },
+    },
+  };
 }
 
 Iterable<Map<String, dynamic>> _jsonObjects(Object? value) sync* {

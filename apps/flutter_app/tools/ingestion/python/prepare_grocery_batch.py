@@ -31,7 +31,11 @@ def comparable_name(name):
 
 def reconcile(rows, known):
     saved=defaultdict(list)
-    for item in known:saved[(item['source'],item['store_product_url'])].append(item)
+    named=defaultdict(list)
+    for item in known:
+        key=(item['source'],item['store_product_url'])
+        saved[key].append(item)
+        named[(key,comparable_name(item['external_name']))].append(item)
     accepted,held,identities,sku_conflicts=[],[],{},set()
     for original in rows:
         item=deepcopy(original);key=(item['source'],item['store_product_url'])
@@ -82,7 +86,7 @@ def reconcile(rows, known):
             projected['projection_note']='First-party public price and declared quantity; original response retained with response_sha256'
             item['raw_payload']['evidence']=projected
         candidates=saved.get(key,[])
-        matching=[p for p in candidates if comparable_name(p['external_name'])==comparable_name(item['source_product_name'])]
+        matching=named.get((key,comparable_name(item['source_product_name'])),[])
         shared_new=(item['source']=='compro-super-mx' and not matching)
         if candidates and len(matching)!=1 and not shared_new:
             held.append({'source':item['source'],'url':key[1],'sku':item['external_reference'],
