@@ -43,6 +43,9 @@ interface GoogleIdTokenPayload {
 async function verifyGoogleIdToken(
   idToken: string,
 ): Promise<GoogleIdTokenPayload> {
+  if (!env.GOOGLE_CLIENT_ID) {
+    throw new Error("GOOGLE_CLIENT_ID es obligatorio para autenticar con Google.");
+  }
   const response = await fetch(
     `${GOOGLE_TOKENINFO_URL}${encodeURIComponent(idToken)}`,
   );

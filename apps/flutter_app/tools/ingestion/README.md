@@ -89,6 +89,10 @@ bloqueo de una tienda no impide renovar las demás. Se respetan robots,
 intervalos y límites de los conectores existentes. No depende de que esté
 encendida una computadora ni de abrir la app.
 
+Antes de iniciar los comercios, un control compartido comprueba la conexión
+PostgreSQL, el esquema del catálogo y la RPC pública. Si falla, detiene la
+matriz y muestra el diagnóstico de configuración sin exponer credenciales.
+
 `python/scheduled_source_refresh.py` concilia cada captura nueva con las
 identidades y presentaciones ya publicadas. Los productos nuevos o ambiguos
 quedan fuera de la publicación automática. Cada lote pasa por el staging
@@ -102,7 +106,8 @@ vacío o una verificación fallida marca el job como fallido. Una captura que se
 interrumpe puede publicar su parte validada, pero queda marcada como parcial.
 
 Actions requiere `SUPABASE_DB_URL` (URI completa del Session pooler) y
-`SUPABASE_URL` como secretos, y `SUPABASE_PUBLISHABLE_KEY` como variable pública.
+`SUPABASE_URL` como secretos, y `SUPABASE_PUBLISHABLE_KEY` como variable pública
+(también acepta un secreto con ese nombre).
 La conexión de base debe corresponder al mismo proyecto de la RPC. No se usa
 una clave privilegiada en la app ni en la demo.
 

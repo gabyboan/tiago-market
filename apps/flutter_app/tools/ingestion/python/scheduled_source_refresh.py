@@ -149,22 +149,44 @@ def failure_diagnostics(folder):
     return sorted(found)
 
 
+def validate_config(config):
+    if not config.get('SUPABASE_URL') or not config.get('SUPABASE_PUBLISHABLE_KEY'):
+        raise RuntimeError('Missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY in Actions configuration')
+    connection = urlsplit(os.environ.get('SUPABASE_DB_URL', ''))
+    project = urlsplit(config['SUPABASE_URL']).hostname
+    project_ref = project.removesuffix('.supabase.co') if project else ''
+    if (connection.scheme not in ('postgres', 'postgresql') or not connection.password
+            or not connection.path.lstrip('/') or not project_ref or
+            not (connection.hostname == 'db.' + project
+                 or ((connection.hostname or '').endswith('.pooler.supabase.com')
+                     and connection.username == 'postgres.' + project_ref))):
+        raise RuntimeError('SUPABASE_DB_URL must be a complete PostgreSQL URI for the configured Supabase project')
+
+
+def check_config(folder, config):
+    """One real read and a public RPC check before starting the store matrix."""
+    folder.mkdir(parents=True, exist_ok=True)
+    try:
+        validate_config(config)
+        db = Database(folder)
+        db.query(known_sql('compro-super-mx') + ' limit 1', 'preflight')
+        public_smoke(config)
+    except Exception:
+        diagnostics = failure_diagnostics(folder)
+        print('::error::Refresh preflight failed. Check database and public RPC configuration.')
+        for diagnostic in diagnostics:
+            print('::error::' + diagnostic)
+        return 1
+    print('Database connection, catalog schema and public RPC checks passed.')
+    return 0
+
+
 def refresh(source, folder, config, *, max_pages=100):
     folder.mkdir(parents=True, exist_ok=False)
     report = {'source': source, 'status': 'failed', 'started_at': datetime.now(timezone.utc).isoformat(),
               'known': 0, 'captured': 0, 'accepted': 0, 'held': 0, 'inserted': 0, 'errors': []}
     try:
-        if not config.get('SUPABASE_URL') or not config.get('SUPABASE_PUBLISHABLE_KEY'):
-            raise RuntimeError('Missing public RPC configuration')
-        connection = urlsplit(os.environ.get('SUPABASE_DB_URL', ''))
-        project = urlsplit(config['SUPABASE_URL']).hostname
-        project_ref = project.removesuffix('.supabase.co') if project else ''
-        if (connection.scheme not in ('postgres', 'postgresql') or not connection.password
-                or not project_ref or
-                not (connection.hostname == 'db.' + project
-                     or ((connection.hostname or '').endswith('.pooler.supabase.com')
-                         and connection.username == 'postgres.' + project_ref))):
-            raise RuntimeError('Database connection must target the configured Supabase project')
+        validate_config(config)
         db = Database(folder)
         known = db.query(known_sql(source), 'known-listings')
         report['known'] = len(known)
@@ -213,7 +235,8 @@ def refresh(source, folder, config, *, max_pages=100):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--source', choices=tuple(SOURCES), required=True)
+    parser.add_argument('--source', choices=tuple(SOURCES))
+    parser.add_argument('--check-config', action='store_true')
     parser.add_argument('--work-dir', type=Path, required=True)
     parser.add_argument('--max-pages', type=int, default=100)
     args = parser.parse_args()
@@ -221,6 +244,10 @@ def main():
         parser.error('--max-pages must be between 1 and 100')
     config = {key: os.environ.get(key, '') for key in
               ('SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY')}
+    if args.check_config:
+        return check_config(args.work_dir.resolve(), config)
+    if not args.source:
+        parser.error('--source is required unless --check-config is used')
     report = refresh(args.source, args.work_dir.resolve(), config, max_pages=args.max_pages)
     return 0 if report['status'] == 'ok' else 1
 

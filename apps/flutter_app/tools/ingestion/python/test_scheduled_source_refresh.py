@@ -164,6 +164,21 @@ class OrchestrationTest(unittest.TestCase):
         self.assertEqual(report['status'], 'failed')
         db.assert_not_called()
 
+    def test_preflight_checks_real_database_and_public_rpc(self):
+        with patch.dict(refresh.os.environ, {'SUPABASE_DB_URL': self.connection}), \
+                patch.object(refresh, 'Database') as db, \
+                patch.object(refresh, 'public_smoke') as smoke, redirect_stdout(io.StringIO()):
+            self.assertEqual(refresh.check_config(self.folder, self.config), 0)
+        db.return_value.query.assert_called_once()
+        smoke.assert_called_once_with(self.config)
+
+    def test_preflight_rejects_wrong_project_before_connecting(self):
+        with patch.dict(refresh.os.environ, {'SUPABASE_DB_URL': self.connection}), \
+                patch.object(refresh, 'Database') as db, redirect_stdout(io.StringIO()):
+            self.assertEqual(refresh.check_config(
+                self.folder, self.config | {'SUPABASE_URL': 'https://other.supabase.co'}), 1)
+        db.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()
