@@ -7,6 +7,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
+from urllib.error import HTTPError
 
 import scheduled_source_refresh as refresh
 from refresh_grocery_catalogs import parse_woo_product
@@ -99,6 +100,29 @@ class PublicationTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'no available products'):
                 refresh.public_smoke({'SUPABASE_URL': 'https://fixture.supabase.co',
                                       'SUPABASE_PUBLISHABLE_KEY': 'public-fixture'})
+
+    def test_public_rpc_retries_transient_server_errors_then_validates_every_search(self):
+        row={'currency':'MXN','available':True,'branch_id':None,'distance_km':None}
+        replies=[HTTPError('https://fixture.supabase.co',500,'fixture',{},None)]
+        replies += [io.StringIO(json.dumps([row])) for _ in range(3)]
+        with patch.object(refresh,'urlopen',side_effect=replies) as request, \
+                patch.object(refresh.time,'sleep') as sleep:
+            counts=refresh.public_smoke({'SUPABASE_URL':'https://fixture.supabase.co',
+                                        'SUPABASE_PUBLISHABLE_KEY':'public-fixture'})
+        self.assertEqual(counts,{'all':1,'leche':1,'arroz':1})
+        self.assertEqual(request.call_count,4)
+        sleep.assert_called_once_with(5)
+
+    def test_persistent_server_error_or_access_error_still_fails_public_verification(self):
+        for status,attempts in [(500,3),(403,1)]:
+            with self.subTest(status=status), \
+                    patch.object(refresh,'urlopen',side_effect=HTTPError(
+                        'https://fixture.supabase.co',status,'fixture',{},None)) as request, \
+                    patch.object(refresh.time,'sleep'):
+                with self.assertRaisesRegex(RuntimeError,f'HTTP {status}'):
+                    refresh.public_smoke({'SUPABASE_URL':'https://fixture.supabase.co',
+                                         'SUPABASE_PUBLISHABLE_KEY':'public-fixture'})
+                self.assertEqual(request.call_count,attempts)
 
 
 class OrchestrationTest(unittest.TestCase):

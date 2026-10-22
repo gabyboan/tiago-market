@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from urllib.parse import urlsplit
@@ -119,11 +120,16 @@ def public_smoke(config):
                                            'page_number': 1, 'only_available': True}).encode(),
                           headers={'apikey': config['SUPABASE_PUBLISHABLE_KEY'],
                                    'Content-Type': 'application/json'})
-        try:
-            with urlopen(request, timeout=30) as response:
-                found = json.load(response)
-        except HTTPError as error:
-            raise RuntimeError(f'Public catalog returned HTTP {error.code}') from None
+        for attempt in range(3):
+            try:
+                with urlopen(request, timeout=30) as response:
+                    found = json.load(response)
+                break
+            except HTTPError as error:
+                if error.code in (500, 502, 503, 504) and attempt < 2:
+                    time.sleep(5 * (attempt + 1))
+                    continue
+                raise RuntimeError(f'Public catalog returned HTTP {error.code}') from None
         if not isinstance(found, list) or len(found) > 100:
             raise RuntimeError('Invalid public catalog response')
         for row in found:

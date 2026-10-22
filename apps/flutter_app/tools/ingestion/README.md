@@ -105,6 +105,11 @@ hasta 50 productos. Se verifica que la API responda únicamente con esos IDs;
 los productos ausentes o con cambios de identidad quedan pendientes. Completar
 esas consultas no se presenta como un recorrido del catálogo completo de la tienda.
 
+La renovación programada reintenta hasta dos veces los HTTP 500, 502, 503 y 504,
+con espera creciente y dentro del presupuesto de solicitudes. La comprobación
+de la RPC pública aplica el mismo límite de reintentos. Los bloqueos de acceso,
+límites de frecuencia y challenges detienen la fuente; no se reintentan.
+
 Después de publicar, compara precios, fechas, disponibilidad e identidades
 contra el catálogo vigente y prueba la RPC pública de la app. Un catálogo
 vacío o una verificación fallida marca el job como fallido. Una captura que se

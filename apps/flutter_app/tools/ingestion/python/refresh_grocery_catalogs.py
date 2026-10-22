@@ -140,7 +140,8 @@ def capture_source(source, folder, *, max_pages=60, page_size=None, product_limi
     host = SOURCES[source][0]
     adapter = BULK.get(source, 'html')
     client = SafeHttpClient([host], max_requests=min(500, max_pages + product_limit + 6),
-                            max_bytes=8 * 1024 * 1024, accepted_statuses=(200, 206))
+                            max_bytes=8 * 1024 * 1024, accepted_statuses=(200, 206),
+                            server_retries=2 if known_only else 0)
     rows, rejected, seen, failure, complete, responses = [], [], set(), None, False, 0
     remaining_urls = set(seeds) if known_only else set()
     requested_urls = len(remaining_urls)
