@@ -100,6 +100,11 @@ existente y una transacción de prueba con rollback antes de confirmarse. Se
 conservan las fechas HTTP originales y el historial; volver a procesar una
 captura no renueva su vigencia.
 
+Chedraui y Gran Bodega consultan los identificadores guardados en lotes de
+hasta 50 productos. Se verifica que la API responda únicamente con esos IDs;
+los productos ausentes o con cambios de identidad quedan pendientes. Completar
+esas consultas no se presenta como un recorrido del catálogo completo de la tienda.
+
 Después de publicar, compara precios, fechas, disponibilidad e identidades
 contra el catálogo vigente y prueba la RPC pública de la app. Un catálogo
 vacío o una verificación fallida marca el job como fallido. Una captura que se

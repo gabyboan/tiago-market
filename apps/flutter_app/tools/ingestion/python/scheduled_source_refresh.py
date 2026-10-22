@@ -26,15 +26,22 @@ from refresh_online_catalog import Database, ROOT, literal
 def known_sql(source):
     return """select sp.source, sp.store_product_url, sp.external_name, sp.presentation,
        p.normalized_name, p.category, s.slug as store_slug, sp.image_url,
-       (select max(ps.captured_at) from public.price_snapshots ps
-        where ps.store_product_id=sp.id and ps.price_scope='online') as latest_capture
+       latest.captured_at as latest_capture, latest.source_product_id
 from public.store_products sp
 join public.products p on p.id=sp.product_id
 join public.stores s on s.id=sp.store_id
+join lateral (
+  select ps.captured_at,
+         coalesce(ps.raw_payload#>>'{raw_payload,evidence,productId}',
+                  ps.raw_payload#>>'{raw_payload,product_id}',
+                  ps.raw_payload#>>'{evidence,productId}',
+                  ps.raw_payload->>'product_id') as source_product_id
+  from public.price_snapshots ps
+  where ps.store_product_id=sp.id and ps.price_scope='online' and ps.branch_id is null
+  order by ps.captured_at desc limit 1
+) latest on true
 where sp.branch_id is null and s.enabled and s.country='MX'
   and sp.source=""" + literal(source) + """
-  and exists (select 1 from public.price_snapshots ps
-              where ps.store_product_id=sp.id and ps.price_scope='online')
 order by sp.store_product_url, p.normalized_name
 """
 
@@ -193,16 +200,22 @@ def refresh(source, folder, config, *, max_pages=100):
         if not known:
             raise RuntimeError('No previously published listings for this source')
         json_write(folder / 'known.json', known)
+        product_ids = []
+        if source in ('chedraui-mx', 'gran-bodega-mx'):
+            product_ids = [row.get('source_product_id') for row in known]
+            if any(not isinstance(value, str) or not value.isdecimal() for value in product_ids):
+                raise RuntimeError('Missing reviewed VTEX product identifiers; catalog review required')
         capture = capture_source(source, folder / 'capture', max_pages=max_pages,
                                  product_limit=300, seeds=[r['store_product_url'] for r in known],
-                                 known_only=True)
+                                 known_only=True, product_ids=product_ids)
         raw = read_ndjson(folder / 'capture/observations.ndjson')
         report['captured'] = len(raw)
         rows, held = prepare_existing(raw, known)
         report.update(accepted=len(rows), held=len(held),
                       not_refreshed=max(0, len(known) - len(rows)),
                       capture_failure=capture.get('failure'),
-                      catalog_complete=capture.get('full_catalog_traversed', False))
+                      catalog_complete=capture.get('full_catalog_traversed', False),
+                      known_catalog_complete=capture.get('known_catalog_traversed', False))
         json_write(folder / 'held-private.json', held)
         if not rows:
             raise RuntimeError('No valid observations of existing products; nothing was published')
@@ -213,7 +226,8 @@ def refresh(source, folder, config, *, max_pages=100):
         report['inserted'] = result['inserted_snapshots']
         report['verification'] = verify_database(db, rows)
         report['public_search_counts'] = public_smoke(config)
-        if capture.get('failure') or (source in BULK and not report['catalog_complete']):
+        if capture.get('failure') or (source in BULK and not report['catalog_complete']
+                                      and not report['known_catalog_complete']):
             report['status'] = 'partial'
             report['errors'].append('Capture stopped early; only validated observations were published')
         else:

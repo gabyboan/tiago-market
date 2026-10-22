@@ -111,13 +111,15 @@ class OrchestrationTest(unittest.TestCase):
                        'SUPABASE_PUBLISHABLE_KEY': 'public-fixture'}
         self.connection = 'postgresql://postgres.fixture:fixture-password@aws-0-region.pooler.supabase.com/postgres'
 
-    def execute(self, capture_failure=None, rows=None, verify_error=None):
+    def execute(self, capture_failure=None, rows=None, verify_error=None,
+                catalog_complete=True, known_catalog_complete=False):
         db = Mock()
         db.query.return_value = [self.known]
         with patch.dict(refresh.os.environ, {'SUPABASE_DB_URL': self.connection}), \
                 patch.object(refresh, 'Database', return_value=db), \
                 patch.object(refresh, 'capture_source', return_value={
-                    'failure': capture_failure, 'full_catalog_traversed': True}), \
+                    'failure': capture_failure, 'full_catalog_traversed': catalog_complete,
+                    'known_catalog_traversed': known_catalog_complete}), \
                 patch.object(refresh, 'read_ndjson', return_value=[self.row] if rows is None else rows), \
                 patch.object(refresh, 'publish', return_value={'inserted_snapshots': 1}) as publish, \
                 patch.object(refresh, 'verify_database', side_effect=verify_error,
@@ -143,6 +145,13 @@ class OrchestrationTest(unittest.TestCase):
     def test_partial_capture_publishes_only_valid_observations_and_reports_failure(self):
         report, publish = self.execute('Origin stopped at HTTP 503')
         self.assertEqual(report['status'], 'partial')
+        publish.assert_called_once()
+
+    def test_complete_known_catalog_does_not_require_discovering_new_products(self):
+        report, publish = self.execute(catalog_complete=False, known_catalog_complete=True)
+        self.assertEqual(report['status'], 'ok')
+        self.assertFalse(report['catalog_complete'])
+        self.assertTrue(report['known_catalog_complete'])
         publish.assert_called_once()
 
     def test_failed_post_publication_verification_cannot_report_success(self):
