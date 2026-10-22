@@ -131,12 +131,24 @@ def main():
             report['publication_error'] = 'SUPABASE_DB_URL is missing'
             report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
             return 3
-        publish_code = run_logged([
-            'psql', database_url, '--set', 'ON_ERROR_STOP=1',
-            '--file', str(prepared / 'publish.sql')], args.work_dir / 'publish.log')
-        if publish_code != 0:
+        # Import lazily: the shared DB helper also imports our NDJSON helpers.
+        from refresh_online_catalog import Database
+        from publish_grocery_batch import ingestion_result
+        try:
+            sql = (prepared / 'publish.sql').read_text()
+            if not sql.rstrip().endswith('commit;'):
+                raise RuntimeError('Unexpected basket transaction shape')
+            db = Database(args.work_dir)
+            dry_run = ingestion_result(db.execute(
+                sql.rsplit('commit;', 1)[0] + 'rollback;\n', 'basket-dry-run'))
+            if dry_run['publishable'] != len(rows) or dry_run['rejected_local']:
+                raise RuntimeError('Basket dry-run eligibility failed')
+            result = ingestion_result(db.execute(sql, 'basket-publish'))
+            if result['publishable'] != len(rows) or result['rejected_local']:
+                raise RuntimeError('Basket publication eligibility failed')
+        except Exception:
             report['status'] = 'failed'
-            report['publication_error'] = 'Atomic SQL publication failed; see publish.log'
+            report['publication_error'] = 'Atomic SQL publication failed; see private database logs'
             report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
             return 3
         report['published'] = True

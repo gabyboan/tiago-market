@@ -32,6 +32,27 @@ export function snapshotRecord(
   };
 }
 
+export async function saveSnapshot(
+  snapshot: ReturnType<typeof snapshotRecord>,
+  client: Pick<typeof supabase, "from"> = supabase,
+): Promise<void> {
+  // The online and branch observations use separate partial unique indexes.
+  // PostgREST upsert cannot infer those predicates. Insert immutable snapshots
+  // and accept only a duplicate of the observation's existing identity.
+  const { error } = await client.from("price_snapshots").insert(snapshot);
+  if (
+    error?.code === "23505" &&
+    [
+      "price_snapshots_online_observation_unique",
+      "price_snapshots_store_product_branch_captured_unique",
+      "price_snapshots_store_product_id_captured_at_key",
+    ].some((name) => error.message.includes(`"${name}"`))
+  ) {
+    return;
+  }
+  assertNoError(error, "No se pudo guardar el precio");
+}
+
 export async function saveScrapedProduct(
   product: ScrapedProduct,
 ): Promise<void> {
@@ -164,13 +185,7 @@ export async function saveScrapedProduct(
   }
 
   if (product.price !== null) {
-    const { error } = await supabase
-      .from("price_snapshots")
-      .upsert(snapshotRecord(product, storeProductId, branchId), {
-        onConflict: "store_product_id,captured_at",
-        ignoreDuplicates: true,
-      });
-    assertNoError(error, "No se pudo guardar el precio");
+    await saveSnapshot(snapshotRecord(product, storeProductId, branchId));
   }
 
   if (product.imageUrl && storeProductId) {

@@ -68,6 +68,9 @@ export async function importProfecoCatalog(): Promise<void> {
     errors: requestErrors + saveErrors,
     totalTimeMs: Date.now() - startedAt,
   });
+  if (requestErrors + saveErrors > 0) {
+    throw new Error(`La importación terminó con ${requestErrors + saveErrors} errores y ${savedPrices} precios guardados.`);
+  }
 }
 
 if (process.argv[1]?.endsWith("import-profeco-catalog.ts")) {
