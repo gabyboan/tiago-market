@@ -255,11 +255,13 @@ def capture_source(source, folder, *, max_pages=60, page_size=None, product_limi
                     response = fetch(url)
                     if response.status != 200:
                         raise ValueError('Incomplete product page')
+                    remaining_urls.discard(url)
                     rows.append(parse_page(response, source))
                 except (ValueError, KeyError, TypeError) as error:
                     rejected.append({'url': url, 'reason': str(error)})
                 except FetchError as error:
                     if error.status == 404:
+                        remaining_urls.discard(url)
                         rejected.append({'url': url, 'reason': 'Product page removed (HTTP 404)'} )
                     else:
                         raise

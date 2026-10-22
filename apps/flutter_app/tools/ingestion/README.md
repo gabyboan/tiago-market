@@ -116,6 +116,13 @@ Después de publicar, compara precios, fechas, disponibilidad e identidades
 contra el catálogo vigente y prueba la RPC pública de la app. Un catálogo
 vacío o una verificación fallida marca el job como fallido. Una captura que se
 interrumpe puede publicar su parte validada, pero queda marcada como parcial.
+También queda parcial si el límite impide revisar todos los enlaces conocidos,
+incluidos los conectores HTML. Revisar una página sin oferta válida o retirada
+cuenta como revisión, sin crear un precio nuevo. Los informes y resúmenes de
+Actions muestran los productos sin renovar y los motivos de exclusión agrupados
+(por ejemplo, promociones sin vigencia comprobada, ofertas ausentes y páginas
+retiradas), separados de los cambios de identidad. Solo se publican códigos y
+cantidades; las URLs, capturas y mensajes sin clasificar permanecen privados.
 
 Actions requiere `SUPABASE_DB_URL` (URI completa del Session pooler) y
 `SUPABASE_URL` como secretos, y `SUPABASE_PUBLISHABLE_KEY` como variable pública

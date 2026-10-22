@@ -16,11 +16,13 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from urllib.parse import urlsplit
 
+from collections import Counter
+
 from daily_basket_update import read_ndjson
 from expand_grocery_sources import SOURCES
 from online_catalog import timestamp
 from prepare_grocery_batch import reconcile
-from refresh_grocery_catalogs import BULK, capture_source, json_write
+from refresh_grocery_catalogs import capture_source, json_write
 from refresh_online_catalog import Database, ROOT, literal
 
 
@@ -72,6 +74,28 @@ def prepare_existing(rows, known):
         else:
             accepted.append(dict(item, category=previous['category']))
     return accepted, held
+
+
+def exclusion_counts(capture, held):
+    """Publish controlled reason codes, never URLs, response text or raw errors."""
+    reasons = {
+        'Promotion lacks independently verified validity': 'promotion_without_verified_validity',
+        'Ambiguous or missing offer': 'missing_or_ambiguous_offer',
+        'Product page removed (HTTP 404)': 'removed_product_page',
+        'Missing presentation': 'missing_presentation',
+        'Tax inclusion requires review': 'unverified_tax_inclusion',
+        'Stock and availability conflict': 'conflicting_availability',
+        'Structured and storefront prices conflict': 'conflicting_price',
+        'Wrong Merco storefront': 'wrong_storefront',
+        'Missing or ambiguous matching SKU state': 'missing_or_ambiguous_sku',
+        'Existing URL has a different or ambiguous product identity': 'changed_or_ambiguous_identity',
+        'Existing listing presentation or store changed': 'changed_presentation_or_store',
+        'Observation is older than the saved price': 'older_observation',
+        'New or ambiguous listing requires a separate review': 'unreviewed_identity',
+    }
+    def counts(items):
+        return dict(Counter(reasons.get(item.get('reason'), 'other_validation') for item in items))
+    return {'capture': counts(capture.get('rejected', [])), 'identity': counts(held)}
 
 
 def publish(input_path, folder, run_source):
@@ -203,12 +227,14 @@ def check_config(folder, config):
 def refresh(source, folder, config, *, max_pages=100):
     folder.mkdir(parents=True, exist_ok=False)
     report = {'source': source, 'status': 'failed', 'started_at': datetime.now(timezone.utc).isoformat(),
-              'known': 0, 'captured': 0, 'accepted': 0, 'held': 0, 'inserted': 0, 'errors': []}
+              'known': 0, 'captured': 0, 'accepted': 0, 'held': 0, 'inserted': 0,
+              'not_refreshed': 0, 'known_urls_not_seen': 0, 'errors': []}
     try:
         validate_config(config)
         db = Database(folder)
         known = db.query(known_sql(source), 'known-listings')
         report['known'] = len(known)
+        report['not_refreshed'] = len(known)
         if not known:
             raise RuntimeError('No previously published listings for this source')
         json_write(folder / 'known.json', known)
@@ -227,7 +253,9 @@ def refresh(source, folder, config, *, max_pages=100):
                       not_refreshed=max(0, len(known) - len(rows)),
                       capture_failure=capture.get('failure'),
                       catalog_complete=capture.get('full_catalog_traversed', False),
-                      known_catalog_complete=capture.get('known_catalog_traversed', False))
+                      known_catalog_complete=capture.get('known_catalog_traversed', False),
+                      known_urls_not_seen=capture.get('known_urls_not_seen', 0),
+                      exclusion_counts=exclusion_counts(capture, held))
         json_write(folder / 'held-private.json', held)
         if not rows:
             raise RuntimeError('No valid observations of existing products; nothing was published')
@@ -238,7 +266,7 @@ def refresh(source, folder, config, *, max_pages=100):
         report['inserted'] = result['inserted_snapshots']
         report['verification'] = verify_database(db, rows)
         report['public_search_counts'] = public_smoke(config)
-        if capture.get('failure') or (source in BULK and not report['catalog_complete']
+        if capture.get('failure') or (not report['catalog_complete']
                                       and not report['known_catalog_complete']):
             report['status'] = 'partial'
             report['errors'].append('Capture stopped early; only validated observations were published')

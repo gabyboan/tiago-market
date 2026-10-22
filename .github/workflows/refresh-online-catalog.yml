@@ -122,8 +122,12 @@ jobs:
               raise SystemExit(0)
           report = json.loads(path.read_text())
           print(f"Status: **{report['status']}**")
-          for key in ('known', 'captured', 'accepted', 'held', 'inserted'):
+          for key in ('known', 'captured', 'accepted', 'held', 'inserted', 'not_refreshed', 'known_urls_not_seen'):
               print(f"- {key}: {report[key]}")
+          print(f"- Known catalog checked: {report.get('known_catalog_complete', False)}")
+          for stage, reasons in report.get('exclusion_counts', {}).items():
+              for reason, count in reasons.items():
+                  print(f'- Excluded ({stage}): {reason}: {count}')
           print(f"- Public search counts: {report.get('public_search_counts', {})}")
           for error in report['errors']:
               print(f'- Error: {error}')

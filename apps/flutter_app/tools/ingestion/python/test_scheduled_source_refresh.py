@@ -25,6 +25,20 @@ def fixture():
 
 
 class IdentityTest(unittest.TestCase):
+    def test_exclusion_summary_counts_reasons_without_exposing_raw_input(self):
+        private = 'raw body or credential must remain private'
+        capture = {'rejected': [
+            {'reason': 'Promotion lacks independently verified validity', 'url': private},
+            {'reason': 'Promotion lacks independently verified validity'},
+            {'reason': 'Product page removed (HTTP 404)'}, {'reason': private},
+        ]}
+        summary = refresh.exclusion_counts(capture, [
+            {'reason': 'Existing URL has a different or ambiguous product identity'}])
+        self.assertEqual(summary, {'capture': {
+            'promotion_without_verified_validity': 2, 'removed_product_page': 1,
+            'other_validation': 1}, 'identity': {'changed_or_ambiguous_identity': 1}})
+        self.assertNotIn(private, json.dumps(summary))
+
     def test_refresh_preserves_http_date_and_reviewed_identity_and_category(self):
         row, known = fixture()
         original = deepcopy(row)
@@ -136,7 +150,7 @@ class OrchestrationTest(unittest.TestCase):
         self.connection = 'postgresql://postgres.fixture:fixture-password@aws-0-region.pooler.supabase.com/postgres'
 
     def execute(self, capture_failure=None, rows=None, verify_error=None,
-                catalog_complete=True, known_catalog_complete=False):
+                catalog_complete=True, known_catalog_complete=False, source='fenix-mx'):
         db = Mock()
         db.query.return_value = [self.known]
         with patch.dict(refresh.os.environ, {'SUPABASE_DB_URL': self.connection}), \
@@ -150,7 +164,7 @@ class OrchestrationTest(unittest.TestCase):
                              return_value={'expected': 1, 'matched': 1}), \
                 patch.object(refresh, 'public_smoke', return_value={'all': 1, 'leche': 0, 'arroz': 1}), \
                 redirect_stdout(io.StringIO()):
-            report = refresh.refresh('fenix-mx', self.folder, self.config)
+            report = refresh.refresh(source, self.folder, self.config)
         return report, publish
 
     def test_healthy_source_publishes_and_verifies(self):
@@ -176,6 +190,11 @@ class OrchestrationTest(unittest.TestCase):
         self.assertEqual(report['status'], 'ok')
         self.assertFalse(report['catalog_complete'])
         self.assertTrue(report['known_catalog_complete'])
+        publish.assert_called_once()
+
+    def test_incomplete_html_target_is_partial_even_without_a_transport_error(self):
+        report, publish = self.execute(catalog_complete=False, source='merco-mx')
+        self.assertEqual(report['status'], 'partial')
         publish.assert_called_once()
 
     def test_failed_post_publication_verification_cannot_report_success(self):
