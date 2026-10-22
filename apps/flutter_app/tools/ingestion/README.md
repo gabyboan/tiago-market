@@ -130,9 +130,9 @@ JSON-LD o el estado VTEX de la ficha, vinculado al SKU, vendedor y moneda.
 Si falla una fuente o una ficha requiere revisión, la
 publicación se bloquea y los snapshots anteriores se conservan.
 
-El workflow guarda reportes y comprobantes durante 30 días como artefactos de
-Actions. Revisar esos artefactos antes de compartirlos; no forman parte del
-código publicado.
+El workflow guarda solamente reportes de revisión y preflight durante 30 días
+como artefactos de Actions. Las páginas capturadas, SQL y logs de base quedan
+en el runner privado y no se adjuntan a los artefactos.
 
 El flujo anterior de Profeco también queda manual. La renovación automática
 del catálogo de la app la realiza `refresh-online-catalog.yml`.
