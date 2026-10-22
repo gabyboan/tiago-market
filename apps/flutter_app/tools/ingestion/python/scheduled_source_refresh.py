@@ -179,14 +179,20 @@ def validate_config(config):
 def check_config(folder, config):
     """One real read and a public RPC check before starting the store matrix."""
     folder.mkdir(parents=True, exist_ok=True)
+    stage = 'configuration'
     try:
         validate_config(config)
+        stage = 'database'
         db = Database(folder)
         db.query(known_sql('compro-super-mx') + ' limit 1', 'preflight')
+        stage = 'public RPC'
         public_smoke(config)
-    except Exception:
+    except Exception as error:
         diagnostics = failure_diagnostics(folder)
-        print('::error::Refresh preflight failed. Check database and public RPC configuration.')
+        print(f'::error::Refresh preflight failed at {stage}.')
+        code = str(error).removeprefix('Public catalog returned HTTP ')
+        if stage == 'public RPC' and len(code) == 3 and code.isdecimal():
+            print(f'::error::Public catalog returned HTTP {code}.')
         for diagnostic in diagnostics:
             print('::error::' + diagnostic)
         return 1
