@@ -13,6 +13,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  catalog:
+    name: Catalog SQL contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: local-fixture
+          POSTGRES_DB: tiago_catalog_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tiago_catalog_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: local-fixture
+      PGDATABASE: tiago_catalog_test
+    steps:
+      - uses: actions/checkout@v6
+      - name: Compare catalog RPC results and permissions
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install --yes postgresql-client
+          fi
+          python3 scripts/check_catalog_rpc.py
+
   publication:
     name: Publication and secret checks
     runs-on: ubuntu-latest

@@ -92,6 +92,8 @@ encendida una computadora ni de abrir la app.
 Antes de iniciar los comercios, un control compartido comprueba la conexión
 PostgreSQL, el esquema del catálogo y la RPC pública. Si falla, detiene la
 matriz y muestra el diagnóstico de configuración sin exponer credenciales.
+El diagnóstico distingue configuración, conexión de base y RPC pública. Los
+artefactos identifican también el número de intento para permitir reejecuciones.
 
 `python/scheduled_source_refresh.py` concilia cada captura nueva con las
 identidades y presentaciones ya publicadas. Los productos nuevos o ambiguos
