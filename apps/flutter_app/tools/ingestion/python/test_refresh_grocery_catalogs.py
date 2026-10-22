@@ -203,5 +203,26 @@ class BulkIntegrityTests(unittest.TestCase):
         self.assertEqual(report['accepted'],1)
         self.assertIsNone(report['failure'])
 
+    def test_html_checks_include_rejected_and_removed_pages_but_not_truncated_urls(self):
+        from test_expand_grocery_sources import html
+        urls=['https://www.scorpion.com.mx/tienda/'+name+'.html'
+              for name in ('valid','invalid','removed')]
+        class Client:
+            receipts=[];metrics={}
+            def get(self,url):
+                if url == urls[2]:raise FetchError('Unexpected HTTP 404',404)
+                if url == urls[1]:return response('<html>No offer</html>',url)
+                return response(html({'@type':'Product','name':'Arroz Fixture 500 g','sku':'fixture',
+                    'offers':{'@type':'Offer','price':12.5,'priceCurrency':'MXN','availability':'InStock'}}),url)
+        for limit, complete, unseen in [(3,True,0),(2,False,1)]:
+            with self.subTest(limit=limit),tempfile.TemporaryDirectory() as tmp, \
+                    patch('refresh_grocery_catalogs.SafeHttpClient',return_value=Client()):
+                report=capture_source('scorpion-mx',Path(tmp)/'capture',seeds=urls,
+                                      known_only=True,product_limit=limit)
+            self.assertEqual(report['accepted'],1)
+            self.assertEqual(report['known_catalog_traversed'],complete)
+            self.assertEqual(report['known_urls_not_seen'],unseen)
+            self.assertIsNone(report['failure'])
+
 
 if __name__=='__main__':unittest.main()
