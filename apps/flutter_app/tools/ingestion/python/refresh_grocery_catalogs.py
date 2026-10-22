@@ -135,7 +135,7 @@ def currency_from_home(html, adapter):
     return 'MXN' if re.search(pattern, html, re.I) else None
 
 
-def capture_source(source, folder, *, max_pages=60, page_size=None, product_limit=80, seeds=()):
+def capture_source(source, folder, *, max_pages=60, page_size=None, product_limit=80, seeds=(), known_only=False):
     folder.mkdir(parents=True, exist_ok=False)
     host = SOURCES[source][0]
     adapter = BULK.get(source, 'html')
@@ -205,8 +205,10 @@ def capture_source(source, folder, *, max_pages=60, page_size=None, product_limi
                     complete = True
                     break
         else:
-            home = fetch(source_home(source))
-            discovered = product_links(home.text, source)
+            discovered = []
+            if not known_only:
+                home = fetch(source_home(source))
+                discovered = product_links(home.text, source)
             # Previously validated links are fresh HTTP requests, never replays.
             candidates = list(dict.fromkeys(list(seeds) + discovered))[:product_limit]
             json_write(folder / 'candidates.json', candidates)

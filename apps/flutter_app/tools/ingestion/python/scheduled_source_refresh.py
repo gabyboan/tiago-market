@@ -194,7 +194,8 @@ def refresh(source, folder, config, *, max_pages=100):
             raise RuntimeError('No previously published listings for this source')
         json_write(folder / 'known.json', known)
         capture = capture_source(source, folder / 'capture', max_pages=max_pages,
-                                 product_limit=300, seeds=[r['store_product_url'] for r in known])
+                                 product_limit=300, seeds=[r['store_product_url'] for r in known],
+                                 known_only=True)
         raw = read_ndjson(folder / 'capture/observations.ndjson')
         report['captured'] = len(raw)
         rows, held = prepare_existing(raw, known)

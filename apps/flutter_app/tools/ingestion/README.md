@@ -120,10 +120,14 @@ payloads, SQL y credenciales no se suben como artefactos públicos.
 El workflow `update-chedraui-merco-basket.yml` queda disponible para ejecución
 manual. Usa las ocho fichas de
 `catalogs/chedraui_merco_basket.json` y el secreto `SUPABASE_DB_URL` de Actions.
+Comparte el grupo de concurrencia con la renovación general para que ambas
+ejecuciones no publiquen observaciones de las mismas tiendas simultáneamente.
 
 `python/daily_basket_update.py` revisa ambas fuentes, identidad, presentación,
 unidad, disponibilidad y evidencia antes de publicar la canasta completa en
-una transacción. Si falla una fuente o una ficha requiere revisión, la
+una transacción, luego de comprobarla con rollback. Chedraui admite evidencia
+JSON-LD o el estado VTEX de la ficha, vinculado al SKU, vendedor y moneda.
+Si falla una fuente o una ficha requiere revisión, la
 publicación se bloquea y los snapshots anteriores se conservan.
 
 El workflow guarda reportes y comprobantes durante 30 días como artefactos de

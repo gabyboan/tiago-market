@@ -129,5 +129,22 @@ class BulkIntegrityTests(unittest.TestCase):
         self.assertEqual(report['accepted'],1);self.assertEqual(len(report['rejected']),1)
         self.assertIsNone(report['failure'])
 
+    def test_scheduled_html_refresh_requests_only_previously_reviewed_urls(self):
+        from test_expand_grocery_sources import html
+        url='https://www.scorpion.com.mx/tienda/valid.html'
+        requested=[]
+        class Client:
+            receipts=[];metrics={}
+            def get(self,target):
+                requested.append(target)
+                if target != url:raise AssertionError('Unexpected discovery request')
+                return response(html({'@type':'Product','name':'Arroz Fixture 500 g','sku':'fixture',
+                    'offers':{'@type':'Offer','price':12.5,'priceCurrency':'MXN','availability':'InStock'}}),target)
+        with tempfile.TemporaryDirectory() as tmp,patch('refresh_grocery_catalogs.SafeHttpClient',return_value=Client()):
+            report=capture_source('scorpion-mx',Path(tmp)/'capture',seeds=[url],known_only=True)
+        self.assertEqual(requested,[url])
+        self.assertEqual(report['accepted'],1)
+        self.assertIsNone(report['failure'])
+
 
 if __name__=='__main__':unittest.main()
