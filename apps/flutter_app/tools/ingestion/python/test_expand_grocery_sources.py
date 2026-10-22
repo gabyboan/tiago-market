@@ -325,6 +325,7 @@ class TransportTests(unittest.TestCase):
             calls=0
             def open(self,request,timeout):
                 status=statuses[self.calls];self.calls+=1
+                if isinstance(status,Exception):raise status
                 return FakeResponse(status)
         opener=Opener();sleeps=[]
         client=SafeHttpClient(['test.example'],opener=opener,server_retries=2,
@@ -356,6 +357,32 @@ class TransportTests(unittest.TestCase):
                 self.assertEqual(opener.calls,1)
                 self.assertFalse(sleeps)
                 self.assertEqual(client.metrics['server_retries'],0)
+
+    def test_read_timeouts_retry_then_recover_with_request_accounting(self):
+        from urllib.error import URLError
+        for error in (TimeoutError(), URLError(TimeoutError())):
+            with self.subTest(error=type(error).__name__):
+                client,opener,sleeps=self.retry_client([error,200])
+                self.assertEqual(client._request('https://test.example/products').status,200)
+                self.assertEqual(opener.calls,2)
+                self.assertEqual(client.metrics['requests'],2)
+                self.assertEqual(client.metrics['timeouts'],1)
+                self.assertIn(10,sleeps)
+
+    def test_repeated_timeouts_stop_after_two_retries(self):
+        client,opener,_=self.retry_client([TimeoutError(),TimeoutError(),TimeoutError()])
+        with self.assertRaises(FetchError):client._request('https://test.example/products')
+        with self.assertRaises(FetchError):client._request('https://test.example/products')
+        self.assertEqual(opener.calls,3)
+
+    def test_timeouts_do_not_retry_posts_or_exceed_request_budget(self):
+        client,opener,_=self.retry_client([TimeoutError()])
+        with self.assertRaises(FetchError):client._request('https://test.example/products',b'{}')
+        self.assertEqual(opener.calls,1)
+        client,opener,_=self.retry_client([TimeoutError()])
+        client.max_requests=1
+        with self.assertRaises(FetchError):client._request('https://test.example/products')
+        self.assertEqual(opener.calls,1)
 
     def client(self, status, allowed=(200,)):
         class FakeResponse(io.BytesIO):

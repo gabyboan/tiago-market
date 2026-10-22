@@ -17,9 +17,10 @@ USER_AGENT = "TiagoMarketBot/0.2 (+https://github.com/gabyboan/tiago-market)"
 
 
 class FetchError(RuntimeError):
-    def __init__(self, reason: str, status: int | None = None):
+    def __init__(self, reason: str, status: int | None = None, *, timed_out=False):
         super().__init__(reason)
         self.status = status
+        self.timed_out = timed_out
 
 
 @dataclass(frozen=True)
@@ -85,7 +86,7 @@ class SafeHttpClient:
             try:
                 return self._request_once(url, data)
             except FetchError as error:
-                if (data is not None or error.status not in (500, 502, 503, 504)
+                if (data is not None or not (error.timed_out or error.status in (500, 502, 503, 504))
                         or attempt == self.server_retries):
                     raise
                 self.metrics['server_retries'] += 1
@@ -144,8 +145,15 @@ class SafeHttpClient:
             self.metrics["timeouts"] += 1
             self.metrics["failures"] += 1
             self._blocked.add(host)
-            raise FetchError("HTTP timeout; origin stopped") from None
-        except (URLError, UnicodeError, OSError):
+            raise FetchError("HTTP timeout; origin stopped", timed_out=True) from None
+        except URLError as error:
+            self.metrics["failures"] += 1
+            self._blocked.add(host)
+            if isinstance(error.reason, TimeoutError):
+                self.metrics["timeouts"] += 1
+                raise FetchError("HTTP timeout; origin stopped", timed_out=True) from None
+            raise FetchError("HTTP transport failed; origin stopped") from None
+        except (UnicodeError, OSError):
             self.metrics["failures"] += 1
             self._blocked.add(host)
             raise FetchError("HTTP transport failed; origin stopped") from None
