@@ -42,9 +42,12 @@ class SafeHttpClient:
     def __init__(self, allow_hosts, *, timeout=20, delay=5, max_requests=30,
                  max_bytes=4 * 1024 * 1024, cache_ttl=900, cache_entries=32,
                  opener=None, resolver=socket.getaddrinfo,
-                 clock=time.monotonic, sleep=time.sleep, accepted_statuses=(200,)):
+                 clock=time.monotonic, sleep=time.sleep, accepted_statuses=(200,), server_retries=0):
         self.allow_hosts = frozenset(allow_hosts)
         self.accepted_statuses = frozenset(accepted_statuses)
+        if type(server_retries) is not int or not 0 <= server_retries <= 2:
+            raise ValueError('At most two bounded server retries are allowed')
+        self.server_retries = server_retries
         if self.accepted_statuses not in (frozenset({200}), frozenset({200, 206})):
             raise ValueError("Only explicit read-only partial responses may be enabled")
         if not self.allow_hosts or any("/" in h or ":" in h for h in self.allow_hosts):
@@ -78,6 +81,18 @@ class SafeHttpClient:
         return parsed
 
     def _request(self, url, data=None):
+        for attempt in range(self.server_retries + 1):
+            try:
+                return self._request_once(url, data)
+            except FetchError as error:
+                if (data is not None or error.status not in (500, 502, 503, 504)
+                        or attempt == self.server_retries):
+                    raise
+                self.metrics['server_retries'] += 1
+                self.sleep(10 * (2 ** attempt))
+                self._blocked.discard(urlsplit(url).hostname)
+
+    def _request_once(self, url, data=None):
         parsed = self._validate_url(url)
         host = parsed.hostname
         if host in self._blocked:
@@ -111,6 +126,10 @@ class SafeHttpClient:
             self.receipts.append({"url": url, "status": status, "observed_at": observed,
                                   "sha256": sha, "bytes": len(body), "content_range": content_range,
                                   "duration_ms": round((self.clock() - started) * 1000)})
+            lower = body.lower()
+            if any(marker in lower for marker in (b"cf-chl-", b"px-captcha", b"captcha challenge", b"incapsula incident id")):
+                self._blocked.add(host)
+                raise FetchError("Access challenge; origin stopped")
             if status in (401, 403, 412, 429) or status >= 500:
                 self._blocked.add(host)
                 raise FetchError(f"Origin stopped at HTTP {status}", status)
@@ -118,10 +137,6 @@ class SafeHttpClient:
                 raise FetchError(f"Unexpected HTTP {status}", status)
             if len(body) > self.max_bytes:
                 raise FetchError("Response exceeds byte budget")
-            lower = body.lower()
-            if any(marker in lower for marker in (b"cf-chl-", b"px-captcha", b"captcha challenge", b"incapsula incident id")):
-                self._blocked.add(host)
-                raise FetchError("Access challenge; origin stopped")
             result = HttpResponse(url, status, body.decode("utf-8"), observed, sha, content_type, content_range)
             self.metrics["success"] += 1
             return result

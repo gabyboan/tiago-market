@@ -315,6 +315,48 @@ class IntegrityTests(unittest.TestCase):
 
 
 class TransportTests(unittest.TestCase):
+    def retry_client(self, statuses, body=b'[]'):
+        class FakeResponse(io.BytesIO):
+            headers={'Content-Type':'application/json'}
+            def __init__(self,status):
+                super().__init__(body);self.status=status
+            def geturl(self):return 'https://test.example/products'
+        class Opener:
+            calls=0
+            def open(self,request,timeout):
+                status=statuses[self.calls];self.calls+=1
+                return FakeResponse(status)
+        opener=Opener();sleeps=[]
+        client=SafeHttpClient(['test.example'],opener=opener,server_retries=2,
+            sleep=sleeps.append,resolver=lambda *a,**kw:[(None,None,None,None,('93.184.216.34',443))])
+        return client,opener,sleeps
+
+    def test_transient_server_error_retries_with_delay_and_counts_every_attempt(self):
+        client,opener,sleeps=self.retry_client([500,200])
+        result=client._request('https://test.example/products')
+        self.assertEqual(result.status,200)
+        self.assertEqual(opener.calls,2)
+        self.assertIn(10,sleeps)
+        self.assertEqual(client.metrics['requests'],2)
+        self.assertEqual(client.metrics['server_retries'],1)
+        self.assertEqual([r['status'] for r in client.receipts],[500,200])
+
+    def test_exhausted_server_retries_keep_the_origin_circuit_open(self):
+        client,opener,_=self.retry_client([503,503,503])
+        with self.assertRaises(FetchError):client._request('https://test.example/products')
+        with self.assertRaises(FetchError):client._request('https://test.example/products')
+        self.assertEqual(opener.calls,3)
+        self.assertEqual(client.metrics['server_retries'],2)
+
+    def test_access_blocks_rate_limits_and_challenges_never_retry(self):
+        for status,body in [(403,b'blocked'),(429,b'slow down'),(500,b'captcha challenge')]:
+            with self.subTest(status=status,body=body):
+                client,opener,sleeps=self.retry_client([status],body)
+                with self.assertRaises(FetchError):client._request('https://test.example/products')
+                self.assertEqual(opener.calls,1)
+                self.assertFalse(sleeps)
+                self.assertEqual(client.metrics['server_retries'],0)
+
     def client(self, status, allowed=(200,)):
         class FakeResponse(io.BytesIO):
             headers = {'Content-Type': 'application/json', 'Content-Range': 'products 0-0/1'}
