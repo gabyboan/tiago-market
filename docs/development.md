@@ -109,6 +109,35 @@ recuperados ni aplicar `supabase db push` sin revisar el historial de destino.
 Los tests SQL bajo `apps/flutter_app/supabase/tests` son contratos para una
 base aislada y descartable. No ejecutarlos en producción.
 
+El refresco programado ejecuta mantenimiento antes de publicar: conserva 90 días
+de observaciones y siempre la última de cada producto/sucursal/alcance. Los
+registros antiguos se guardan completos en el bucket **privado**
+`catalog-private-archives`, como NDJSON comprimido y un manifiesto con SHA-256.
+Se descargan y verifican ambos archivos antes de retirar las filas originales;
+si cambia una fila o falla la verificación, la limpieza se detiene. Los registros
+pendientes de revisión y las copias de preparación que difieren del historial
+se conservan. Las copias idénticas de preparación se eliminan tras publicarse.
+
+El job necesita `SUPABASE_DB_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` y
+`SUPABASE_SERVICE_ROLE_KEY` en el runner. La clave de servicio permanece privada.
+El límite preventivo es 400 MiB de base y 700 MiB de archivos: si se alcanza,
+se detienen nuevas cargas para revisar capacidad. Una retención de 90 días no
+garantiza entrar en el plan gratuito para cualquier volumen de capturas.
+Los archivos privados se conservan hasta que se decida trasladarlos o retirarlos;
+no se publican respaldos ni respuestas de comercios como artifacts de Actions.
+
+Para recuperar observaciones, descargar el `.ndjson.gz` y su `.manifest.json`
+desde el bucket privado y ejecutar primero una prueba con rollback:
+
+```bash
+python3 apps/flutter_app/tools/ingestion/python/restore_catalog_archive.py \
+  --archive /ruta/archivo.ndjson.gz --manifest /ruta/archivo.manifest.json \
+  --work-dir /ruta/privada/restauracion
+```
+
+Agregar `--apply` únicamente para confirmar la restauración. El comando valida
+checksum y cantidad de filas; los conflictos existentes se conservan.
+
 ## Antes de un commit
 
 ```bash

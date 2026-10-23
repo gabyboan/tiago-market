@@ -41,6 +41,37 @@ jobs:
       matrix: ${{ steps.sources.outputs.matrix }}
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Archive old observations privately and clear published staging
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install --yes postgresql-client
+          fi
+          python3 apps/flutter_app/tools/ingestion/python/catalog_storage.py \
+            --apply --work-dir "$RUNNER_TEMP/private-catalog-maintenance"
+      - name: Summarize maintenance counts
+        if: always()
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          from pathlib import Path
+          path = Path(os.environ['RUNNER_TEMP']) / 'private-catalog-maintenance/maintenance-report.json'
+          if path.exists():
+              report = json.loads(path.read_text())
+              print('## Catalog storage')
+              for key in ('retention_days', 'archived', 'staging_removed', 'database_bytes'):
+                  print(f'- {key}: {report[key]}')
+          PY
       - name: Check shared database and public catalog configuration
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
