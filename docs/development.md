@@ -110,11 +110,18 @@ Los tests SQL bajo `apps/flutter_app/supabase/tests` son contratos para una
 base aislada y descartable. No ejecutarlos en producción.
 
 El refresco programado ejecuta mantenimiento antes de publicar: conserva 90 días
-de observaciones y siempre la última de cada producto/sucursal/alcance. Los
-registros antiguos se guardan completos en el bucket **privado**
+de cambios de precio/disponibilidad y siempre la última observación de cada
+producto/sucursal/alcance. Dentro de un tramo sin cambios se mantienen la primera
+y la última observación. Moneda, fuente, identidad, revisión, origen sintético
+y vigencia también forman parte del estado: sus cambios se conservan.
+Las repeticiones intermedias y los registros antiguos se guardan completos en el bucket **privado**
 `catalog-private-archives`, como NDJSON comprimido y un manifiesto con SHA-256.
 Se descargan y verifican ambos archivos antes de retirar las filas originales;
-si cambia una fila o falla la verificación, la limpieza se detiene. Los registros
+si cambia una fila, sus vecinos o falla la verificación, la limpieza se detiene.
+Antes de retirar cada repetición se comprueba de nuevo que sus vecinos inmediatos
+tengan el mismo estado. Las capturas intermedias siguen disponibles en los
+archivos privados, junto con el texto JSON exacto de PostgreSQL para recuperar
+valores numéricos sin pérdida de precisión. Los registros
 pendientes de revisión y las copias de preparación que difieren del historial
 se conservan. Las copias idénticas de preparación se eliminan tras publicarse.
 
@@ -122,9 +129,12 @@ El job necesita `SUPABASE_DB_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` y
 `SUPABASE_SERVICE_ROLE_KEY` en el runner. La clave de servicio permanece privada.
 El límite preventivo es 400 MiB de base y 700 MiB de archivos: si se alcanza,
 se detienen nuevas cargas para revisar capacidad. Una retención de 90 días no
-garantiza entrar en el plan gratuito para cualquier volumen de capturas.
+garantiza entrar en el plan gratuito para cualquier volumen de cambios reales.
 Los archivos privados se conservan hasta que se decida trasladarlos o retirarlos;
 no se publican respaldos ni respuestas de comercios como artifacts de Actions.
+Para ejecutar sólo mantenimiento y las comprobaciones públicas, usar la opción
+`maintenance_only` del workflow manual. Las ejecuciones programadas mantienen
+la captura habitual.
 
 Para recuperar observaciones, descargar el `.ndjson.gz` y su `.manifest.json`
 desde el bucket privado y ejecutar primero una prueba con rollback:

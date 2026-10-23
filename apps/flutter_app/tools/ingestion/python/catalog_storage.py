@@ -39,10 +39,59 @@ LATEST_SUCCESSOR = """exists (
 
 
 def old_snapshots_sql(cutoff):
-    return f"""select to_jsonb(p) as row, md5(to_jsonb(p)::text) as fingerprint
+    return f"""select to_jsonb(p) as row, to_jsonb(p)::text as row_json,
+md5(to_jsonb(p)::text) as fingerprint
 from public.price_snapshots p
 where p.captured_at < {literal(cutoff)}::timestamptz and {LATEST_SUCCESSOR}
 order by p.id limit 500"""
+
+
+def observation_state(alias):
+    """Fields whose changes must remain visible in the relational history."""
+    fields = ('price', 'currency', 'available', 'source', 'source_product_name',
+              'source_store_name', 'source_branch_name', 'source_city_code',
+              'source_city_name', 'external_reference')
+    values = [f'{alias}.{field}' for field in fields]
+    values += [f"coalesce({alias}.raw_payload->>'is_synthetic','false')",
+               f"coalesce({alias}.raw_payload->>'review_status','accepted')"]
+    values += [f"{alias}.raw_payload->>'{field}'" for field in ('valid_from', 'valid_until')]
+    return 'jsonb_build_array(' + ','.join(values) + ')'
+
+
+def repeated_snapshot_ids_sql():
+    # Scan/order history once, then fetch bounded rows by primary key. Repeating
+    # the window scan for every archive would grow quadratically with history.
+    return f"""with states as (
+select id,store_product_id,branch_id,price_scope,captured_at,
+       {observation_state('p')} as state from public.price_snapshots p
+), sequenced as (
+select id,state,lag(state) over w as previous_state,lead(state) over w as next_state
+from states window w as (
+  partition by store_product_id,branch_id,price_scope order by captured_at,id)
+)
+select id from sequenced where state=previous_state and state=next_state
+order by id limit 50001"""
+
+
+def snapshots_by_id_sql(identities):
+    return f"""select to_jsonb(p) as row,to_jsonb(p)::text as row_json,
+md5(to_jsonb(p)::text) as fingerprint from public.price_snapshots p
+where p.id in (select value::uuid from jsonb_array_elements_text(
+{literal(json.dumps(identities))}::jsonb)) order by p.id"""
+
+
+def still_repeated_sql():
+    checks = []
+    for alias, operator, direction in (('previous', '<', 'desc'), ('following', '>', 'asc')):
+        checks.append(f"""(select {observation_state(alias)}
+from public.price_snapshots {alias}
+where {alias}.store_product_id=p.store_product_id
+  and {alias}.branch_id is not distinct from p.branch_id
+  and {alias}.price_scope=p.price_scope
+  and ({alias}.captured_at,{alias}.id) {operator} (p.captured_at,p.id)
+order by {alias}.captured_at {direction},{alias}.id {direction} limit 1)
+= {observation_state('p')}""")
+    return '(' + ' and '.join(checks) + ')'
 
 
 def cleanup_sql(rows=None, cursor=None):
@@ -91,14 +140,20 @@ def cleanup_published(db):
     raise RuntimeError('Staging cleanup batch budget reached')
 
 
-def delete_archived_sql(rows, cutoff):
+def delete_archived_sql(rows, cutoff, *, reason='retention'):
     identities = json.dumps([{'id': r['row']['id'], 'fingerprint': r['fingerprint']} for r in rows])
+    if reason == 'retention':
+        eligible = f"p.captured_at < {literal(cutoff)}::timestamptz and {LATEST_SUCCESSOR}"
+    elif reason == 'repeated':
+        eligible = still_repeated_sql()
+    else:
+        raise ValueError('Unknown archive reason')
     return f"""with archived as (
 select * from jsonb_to_recordset({literal(identities)}::jsonb) as x(id uuid, fingerprint text)
 ), removed as (
 delete from public.price_snapshots p using archived a
 where p.id=a.id and md5(to_jsonb(p)::text)=a.fingerprint
-  and p.captured_at < {literal(cutoff)}::timestamptz and {LATEST_SUCCESSOR}
+  and {eligible}
 returning p.id) select jsonb_build_object('removed',count(*)) as maintenance_report from removed"""
 
 
@@ -116,9 +171,14 @@ def upload_verified(path, object_name):
     return receipt
 
 
-def archive_batch(db, folder, rows, cutoff):
+def archive_batch(db, folder, rows, cutoff, *, reason='retention'):
     name = datetime.now(timezone.utc).strftime('%Y/%m/%d/') + str(uuid4())
     path = folder / (name.rsplit('/', 1)[-1] + '.ndjson.gz')
+    for item in rows:
+        if 'row_json' in item and (
+                json.loads(item['row_json']) != item['row']
+                or hashlib.md5(item['row_json'].encode()).hexdigest() != item['fingerprint']):
+            raise RuntimeError('Snapshot text/fingerprint mismatch; no rows were deleted')
     data = ''.join(json.dumps(row, sort_keys=True, ensure_ascii=False) + '\n' for row in rows).encode()
     path.write_bytes(gzip.compress(data, mtime=0))
     # Validate local reconstruction before requesting a remote write.
@@ -127,28 +187,52 @@ def archive_batch(db, folder, rows, cutoff):
     receipt = upload_verified(path, 'price_snapshots/' + name + '.ndjson.gz')
     manifest = path.with_suffix('.manifest.json')
     manifest.write_text(json.dumps({'format': 1, 'table': 'public.price_snapshots',
-                                   'cutoff': cutoff, 'rows': len(rows),
+                                   'cutoff': cutoff, 'rows': len(rows), 'reason': reason,
                                    'project_url': os.environ.get('SUPABASE_URL'), **receipt}) + '\n')
     upload_verified(manifest, 'price_snapshots/' + name + '.manifest.json')
     # Fingerprints and current/latest protection are checked again at deletion.
-    return execute_report(db, delete_archived_sql(rows, cutoff), 'delete-archived')['removed']
+    return execute_report(db, delete_archived_sql(rows, cutoff, reason=reason), 'delete-archived')['removed']
+
+
+def archive_repeated(db, folder, cutoff):
+    identities = [row['id'] for row in db.query(repeated_snapshot_ids_sql(), 'repeated-identities')]
+    if len(identities) > 50000:
+        raise RuntimeError('Repeated observation budget reached; review before archival')
+    archived = 0
+    for start in range(0, len(identities), 500):
+        rows = db.query(snapshots_by_id_sql(identities[start:start + 500]), 'repeated-select')
+        if not rows:
+            continue
+        check_archive_capacity(db)
+        deleted = archive_batch(db, folder, rows, cutoff, reason='repeated')
+        archived += deleted
+        print(json.dumps({'repeated_batch': deleted, 'repeated_archived': archived}), flush=True)
+        if deleted != len(rows):
+            raise RuntimeError('Observation or neighbors changed during archival; archive retained for review')
+    return archived
+
+
+def check_archive_capacity(db):
+    used = db.query("select coalesce(sum((metadata->>'size')::bigint),0) as bytes "
+                    f"from storage.objects where bucket_id={literal(BUCKET)}", 'archive-quota')[0]['bytes']
+    if used >= 700 * 1024 * 1024:
+        raise RuntimeError('Private archive storage guard reached; preserve existing archives and review capacity')
 
 
 def maintain(db, folder, *, apply=False):
     cutoff = db.query("select now()-interval '90 days' as cutoff", 'archive-cutoff')[0]['cutoff']
-    report = {'retention_days': 90, 'archived': 0, 'staging_removed': 0, 'apply': apply}
+    report = {'retention_days': 90, 'archived': 0, 'repeated_archived': 0,
+              'staging_removed': 0, 'apply': apply}
     if not apply:
         report['eligible_first_batch'] = len(db.query(old_snapshots_sql(cutoff), 'archive-preview'))
+        report['eligible_repetitions'] = len(db.query(repeated_snapshot_ids_sql(), 'repeated-preview'))
         return report
     report['staging_removed'] = cleanup_published(db)
     for _ in range(100):
         rows = db.query(old_snapshots_sql(cutoff), 'archive-select')
         if not rows:
             break
-        used = db.query("select coalesce(sum((metadata->>'size')::bigint),0) as bytes "
-                        f"from storage.objects where bucket_id={literal(BUCKET)}", 'archive-quota')[0]['bytes']
-        if used >= 700 * 1024 * 1024:
-            raise RuntimeError('Private archive storage guard reached; preserve existing archives and review capacity')
+        check_archive_capacity(db)
         deleted = archive_batch(db, folder, rows, cutoff)
         report['archived'] += deleted
         print(json.dumps({'archived_batch': deleted, 'archived_total': report['archived']}), flush=True)
@@ -156,6 +240,7 @@ def maintain(db, folder, *, apply=False):
             raise RuntimeError('Snapshot changed during archival; verified archive retained for review')
     else:
         raise RuntimeError('Archive batch budget reached; rerun maintenance before refreshing')
+    report['repeated_archived'] = archive_repeated(db, folder, cutoff)
     # Rewrite only an almost-empty operational table with substantial bloat.
     # The workflow's ingestion mutex keeps this brief lock away from publishers.
     staging = db.query("select count(*) as rows, pg_total_relation_size("
@@ -177,6 +262,7 @@ def main():
     parser.add_argument('--work-dir', type=Path, required=True)
     parser.add_argument('--apply', action='store_true')
     args = parser.parse_args()
+    args.work_dir = args.work_dir.resolve()
     if args.apply:
         if not os.environ.get('SUPABASE_SERVICE_ROLE_KEY'):
             raise RuntimeError('Private archive service credentials are required')
