@@ -18,11 +18,18 @@ def restore_sql(path, manifest, *, apply=False):
     if (metadata.get('table') != 'public.price_snapshots' or metadata.get('format') != 1
             or metadata.get('sha256') != hashlib.sha256(path.read_bytes()).hexdigest()):
         raise ValueError('Archive manifest/checksum mismatch')
-    rows = [json.loads(line)['row'] for line in gzip.decompress(path.read_bytes()).splitlines()]
+    entries = [json.loads(line) for line in gzip.decompress(path.read_bytes()).splitlines()]
+    rows = [entry['row'] for entry in entries]
     if len(rows) != metadata['rows'] or len({row['id'] for row in rows}) != len(rows):
         raise ValueError('Archive row count/identity mismatch')
+    row_texts = []
+    for entry in entries:
+        value = entry.get('row_json', json.dumps(entry['row']))
+        if json.loads(value) != entry['row']:
+            raise ValueError('Archive row text/identity mismatch')
+        row_texts.append(value)
     return "begin;\nwith restored as (insert into public.price_snapshots select * from " + \
-        "jsonb_populate_recordset(null::public.price_snapshots," + literal(json.dumps(rows)) + \
+        "jsonb_populate_recordset(null::public.price_snapshots," + literal('[' + ','.join(row_texts) + ']') + \
         "::jsonb) on conflict do nothing returning id) select count(*) as restored from restored;\n" + \
         ('commit;' if apply else 'rollback;')
 
@@ -35,6 +42,7 @@ def main():
     parser.add_argument('--work-dir', type=Path, required=True)
     parser.add_argument('--apply', action='store_true')
     args = parser.parse_args()
+    args.work_dir = args.work_dir.resolve()
     args.work_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     sql = restore_sql(args.archive, args.manifest, apply=args.apply)
     Database(args.work_dir).execute(sql, 'restore-commit' if args.apply else 'restore-rollback')

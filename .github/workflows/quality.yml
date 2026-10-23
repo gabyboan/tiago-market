@@ -47,6 +47,7 @@ jobs:
           fi
           python3 scripts/check_catalog_rpc.py
           python3 scripts/check_catalog_storage.py
+          python3 scripts/check_catalog_repetitions.py
 
   publication:
     name: Publication and secret checks
