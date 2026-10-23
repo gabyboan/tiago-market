@@ -18,6 +18,7 @@ from expand_grocery_sources import SOURCES
 from online_catalog import timestamp
 from refresh_grocery_catalogs import json_write
 from refresh_online_catalog import Database, literal, ROOT
+from catalog_storage import CAPACITY_GUARD, cleanup_sql, execute_report
 
 
 def registration_sql(sources=None):
@@ -96,7 +97,7 @@ def main():
             generated=(folder/'generated.sql').read_text()
             if generated.count('begin;')!=1 or not generated.rstrip().endswith('commit;'):
                 raise RuntimeError('Unexpected transaction shape')
-            sql=generated.replace('begin;','begin;\n'+register,1)
+            sql=generated.replace('begin;','begin;\n'+CAPACITY_GUARD+register,1)
             (folder/'publish.sql').write_text(sql)
             (folder/'dry-run.sql').write_text(sql.rsplit('commit;',1)[0]+'rollback;\n')
             manifest['chunks'].append({'number':number,'rows':len(chunk),'sql_sha256':file_hash(folder/'publish.sql')})
@@ -120,6 +121,10 @@ def main():
         if report['publishable']!=chunk['rows'] or report['rejected_local']:
             raise RuntimeError(f'Unexpected publication eligibility in chunk {number}')
         reports.append(report)
+        if args.publish:
+            rows=[json.loads(line) for line in (folder/'input.ndjson').read_text().splitlines()]
+            cleanup=execute_report(db,cleanup_sql(rows),f'cleanup-{number:03}')
+            json_write(folder/'staging-cleanup.json',cleanup)
         print(json.dumps({'chunk':number,'mode':'commit' if args.publish else 'rollback',
                           'publishable':report['publishable'],'inserted':report['inserted_snapshots']}),flush=True)
     summary={key:sum(r.get(key,0) for r in reports) for key in

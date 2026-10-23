@@ -46,6 +46,7 @@ jobs:
             sudo apt-get install --yes postgresql-client
           fi
           python3 scripts/check_catalog_rpc.py
+          python3 scripts/check_catalog_storage.py
 
   publication:
     name: Publication and secret checks
