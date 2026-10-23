@@ -83,6 +83,8 @@ def cleanup_published(db):
     for _ in range(1000):
         result = execute_report(db, cleanup_sql(cursor=cursor), 'cleanup-published-staging')
         removed += result['removed']
+        if removed and removed % 10000 < result['removed']:
+            print(json.dumps({'staging_removed': removed}), flush=True)
         if not result['scanned']:
             return removed
         cursor = result['cursor']
@@ -154,8 +156,14 @@ def maintain(db, folder, *, apply=False):
             raise RuntimeError('Snapshot changed during archival; verified archive retained for review')
     else:
         raise RuntimeError('Archive batch budget reached; rerun maintenance before refreshing')
-    # Ordinary VACUUM releases dead space for reuse without locking the catalog.
-    db.execute('vacuum (analyze) ingestion.source_price_staging;', 'vacuum-staging')
+    # Rewrite only an almost-empty operational table with substantial bloat.
+    # The workflow's ingestion mutex keeps this brief lock away from publishers.
+    staging = db.query("select count(*) as rows, pg_total_relation_size("
+                       "'ingestion.source_price_staging') as bytes from "
+                       "ingestion.source_price_staging", 'staging-size')[0]
+    mode = 'full, analyze' if staging['rows'] <= 1000 and staging['bytes'] > 16 * 1024 * 1024 else 'analyze'
+    db.execute(f'vacuum ({mode}) ingestion.source_price_staging;', 'vacuum-staging')
+    # Price history remains available; its freed pages can be reused normally.
     db.execute('vacuum (analyze) public.price_snapshots;', 'vacuum-snapshots')
     report['database_bytes'] = db.query('select pg_database_size(current_database()) as bytes', 'capacity')[0]['bytes']
     if report['database_bytes'] >= LIMIT_BYTES:
