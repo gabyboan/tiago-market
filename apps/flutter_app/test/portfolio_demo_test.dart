@@ -190,6 +190,11 @@ void main() {
         await tester.tap(find.text('Volver a mi lista'));
         await tester.pumpAndSettle();
         expect(find.byType(CheckoutPage), findsNothing);
+        await tester.scrollUntilVisible(
+          find.text('Mi lista de compras'),
+          -250,
+          scrollable: sheetScroll,
+        );
         expect(find.text('Mi lista de compras'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
