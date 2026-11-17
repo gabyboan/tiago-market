@@ -21,10 +21,14 @@ que conserva fuente, fecha y evidencia de cada observación.
 
 **[Abrir Tiago Market en el navegador](https://gabyboan.github.io/tiago-market/)** · Sin registro
 
-Buscá productos, compará comercios, guardá favoritos y armá una lista de
-compras. La demo usa ocho productos y dos comercios ficticios, señalados en
+Recorré la bienvenida, buscá productos, compará comercios, guardá favoritos y
+armá una lista de compras. Desde la lista podés probar el envío y los métodos
+de pago y revisar un borrador con un domicilio ficticio de solo lectura.
+La demo usa ocho productos y dos comercios ficticios, señalados en
 pantalla; no consulta producción ni realiza compras. La lista se borra al
 recargar y los favoritos se guardan solamente en tu navegador.
+En «Acerca de la demo» podés consultar la versión de la app y la fecha de
+compilación publicada.
 
 ## La app en Android
 

@@ -118,7 +118,7 @@ jobs:
           flutter test test/auth_flow_session_test.dart
           --dart-define=SUPABASE_URL=https://test.supabase.co
           --dart-define=SUPABASE_PUBLISHABLE_KEY=test-public-key
-      - run: python3 -m unittest discover -s tools -p 'test_release_config.py'
+      - run: python3 -m unittest discover -s tools -p 'test_*.py'
       - run: python3 -m unittest discover -s tools/ingestion/python -p 'test_*.py'
 
   web:

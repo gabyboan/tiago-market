@@ -64,9 +64,7 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
     if (quantity <= 0) {
       _showMessage('${item.productName} eliminado de la lista.');
     } else {
-      _showMessage(
-        'Cantidad de ${item.productName} actualizada a $quantity.',
-      );
+      _showMessage('Cantidad de ${item.productName} actualizada a $quantity.');
     }
   }
 
@@ -101,10 +99,7 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
 
     try {
       await SharePlus.instance.share(
-        ShareParams(
-          text: shareText,
-          subject: 'Mi lista de compras',
-        ),
+        ShareParams(text: shareText, subject: 'Mi lista de compras'),
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -123,11 +118,11 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
     final totals = calculateStoreTotals(_items);
     // Offers from different stores are alternatives, not additional purchases.
     final grandTotal = _items.fold<double>(
-        0,
-        (sum, item) =>
-            sum +
-            (item.prices.isEmpty ? 0 : item.prices.first.price) *
-                item.quantity);
+      0,
+      (sum, item) =>
+          sum +
+          (item.prices.isEmpty ? 0 : item.prices.first.price) * item.quantity,
+    );
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -169,10 +164,10 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
                     children: [
                       Text(
                         'Costo estimado',
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                ),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                       Text(
                         '${_items.length} ${_items.length == 1 ? 'producto' : 'productos'}',
@@ -211,20 +206,24 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
               const SizedBox(height: 12),
               if (widget.demo)
                 const Text(
-                    'Demo: no se crean pedidos ni se solicitan datos personales.')
-              else
-                FilledButton.icon(
-                  onPressed: _items.isEmpty
-                      ? null
-                      : () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => CheckoutPage(
-                                  items: List.unmodifiable(_items)),
+                  'Demo: no se crean pedidos ni se solicitan datos personales.',
+                ),
+              FilledButton.icon(
+                onPressed: _items.isEmpty
+                    ? null
+                    : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => CheckoutPage(
+                              items: List.unmodifiable(_items),
+                              demo: widget.demo,
                             ),
                           ),
-                  icon: const Icon(Icons.local_shipping_outlined),
-                  label: const Text('Preparar envío y pago'),
+                        ),
+                icon: const Icon(Icons.local_shipping_outlined),
+                label: Text(
+                  widget.demo ? 'Probar envío y pago' : 'Preparar envío y pago',
                 ),
+              ),
               const SizedBox(height: 18),
               if (_items.isEmpty)
                 const _EmptyState()
@@ -235,20 +234,26 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(item.productName,
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w700)),
+                        Text(
+                          item.productName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         if (item.prices.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               StoreLogo(
-                                  storeName: item.prices.first.storeName,
-                                  storeSlug: item.prices.first.storeSlug),
+                                storeName: item.prices.first.storeName,
+                                storeSlug: item.prices.first.storeSlug,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
-                                  child: Text(item.prices.first.storeName)),
+                                child: Text(item.prices.first.storeName),
+                              ),
                             ],
                           ),
                         ],
@@ -262,8 +267,9 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
                           children: [
                             Text(
                               'Subtotal: \$${((item.prices.isEmpty ? 0 : item.prices.first.price) * item.quantity).toStringAsFixed(2)}',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                             Row(
                               mainAxisSize: MainAxisSize.min,
@@ -297,9 +303,9 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
                 const Divider(height: 32),
                 Text(
                   'Estimación por tienda',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 8),
                 for (final total in totals)
@@ -317,13 +323,15 @@ class _ShoppingListSheetState extends State<ShoppingListSheet> {
                           ],
                         ),
                         Text(
-                            '${total.coveredItems} de ${_items.length} productos disponibles'),
+                          '${total.coveredItems} de ${_items.length} productos disponibles',
+                        ),
                         Text(
                           '\$${total.total.toStringAsFixed(2)}',
                           style: const TextStyle(
-                              color: Color(0xFF006C51),
-                              fontWeight: FontWeight.w900,
-                              fontSize: 18),
+                            color: Color(0xFF006C51),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                          ),
                         ),
                       ],
                     ),

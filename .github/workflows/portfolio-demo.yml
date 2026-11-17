@@ -38,7 +38,9 @@ jobs:
           flutter analyze
           flutter test
       - name: Build without production credentials
-        run: python3 apps/flutter_app/tools/build_portfolio_demo.py
+        run: |
+          python3 -m unittest discover -s apps/flutter_app/tools -p 'test_build_portfolio_demo.py'
+          python3 apps/flutter_app/tools/build_portfolio_demo.py
       - uses: actions/upload-pages-artifact@v4
         with:
           path: apps/flutter_app/build/portfolio-demo

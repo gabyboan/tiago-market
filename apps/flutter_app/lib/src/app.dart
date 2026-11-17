@@ -44,10 +44,9 @@ class TiagoMarketApp extends StatelessWidget {
             ),
           ),
         ),
-        home: demo ? const SearchPage() : const AuthFlowGate(),
+        home: demo ? const WelcomePage(demo: true) : const AuthFlowGate(),
         routes: {
-          AppRoutes.welcome: (_) =>
-              demo ? const SearchPage() : const WelcomePage(),
+          AppRoutes.welcome: (_) => WelcomePage(demo: demo),
           AppRoutes.search: (_) => const SearchPage(),
           AppRoutes.roleSelection: (context) {
             final user = ModalRoute.of(context)!.settings.arguments as User?;

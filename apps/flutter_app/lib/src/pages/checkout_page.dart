@@ -3,9 +3,10 @@ import 'package:tiago_market_app/src/models/checkout.dart';
 import 'package:tiago_market_app/src/models/models.dart';
 
 class CheckoutPage extends StatefulWidget {
-  const CheckoutPage({required this.items, super.key});
+  const CheckoutPage({required this.items, this.demo = false, super.key});
 
   final List<ShoppingItem> items;
+  final bool demo;
 
   @override
   State<CheckoutPage> createState() => _CheckoutPageState();
@@ -34,6 +35,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   void initState() {
     super.initState();
+    if (widget.demo) {
+      const example = {
+        'name': 'Persona de ejemplo',
+        'phone': '5500000000',
+        'street': 'Calle de ejemplo 123',
+        'neighborhood': 'Colonia de ejemplo',
+        'city': 'Ciudad de ejemplo',
+        'state': 'Estado de ejemplo',
+        'zip': '00000',
+        'notes': 'Datos ficticios para recorrer la demo.',
+      };
+      for (final entry in example.entries) {
+        _fields[entry.key]!.text = entry.value;
+      }
+    }
     for (final basket in _baskets) {
       if (basket.isComplete) {
         _basket = basket;
@@ -87,6 +103,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
         padding: const EdgeInsets.only(bottom: 12),
         child: TextFormField(
           controller: _fields[name],
+          readOnly: widget.demo,
+          enableInteractiveSelection: !widget.demo,
           decoration: InputDecoration(
               labelText: label, border: const OutlineInputBorder()),
           keyboardType: keyboard,
@@ -217,6 +235,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 Text('Costo, cobertura y fecha por confirmar'),
                           ),
                           const SizedBox(height: 8),
+                          if (widget.demo)
+                            const Text(
+                                'Domicilio de ejemplo · no ingreses datos personales. '
+                                'En la app puedes completar aquí la entrega.'),
                           _field('name', 'Nombre y apellido'),
                           _field('phone', 'Teléfono de contacto',
                               keyboard: TextInputType.phone,
@@ -332,6 +354,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
           ]),
           _section('Entrega y contacto', [
             const Text('Envío a domicilio'),
+            if (widget.demo)
+              const Text('Domicilio de ejemplo · sin datos personales'),
             Text(draft.contact.fullName),
             Text(draft.contact.phone),
             Text(draft.contact.street),
@@ -357,7 +381,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
           OutlinedButton.icon(
               onPressed: () => setState(() => _draft = null),
               icon: const Icon(Icons.edit_outlined),
-              label: const Text('Editar datos')),
+              label: Text(widget.demo
+                  ? 'Cambiar tienda o método de pago'
+                  : 'Editar datos')),
           TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Volver a mi lista')),

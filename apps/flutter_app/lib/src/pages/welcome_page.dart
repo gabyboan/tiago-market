@@ -4,9 +4,10 @@ import 'package:tiago_market_app/src/config.dart';
 import 'package:tiago_market_app/src/navigation/app_routes.dart';
 
 class WelcomePage extends StatelessWidget {
-  const WelcomePage({super.key, this.onContinueAsGuest});
+  const WelcomePage({super.key, this.onContinueAsGuest, this.demo = false});
 
   final VoidCallback? onContinueAsGuest;
+  final bool demo;
 
   void _continueAsGuest(BuildContext context) {
     if (onContinueAsGuest != null) {
@@ -50,7 +51,9 @@ class WelcomePage extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Tiago Market compara precios cercanos para ayudarte a ahorrar tiempo y dinero.',
+                        demo
+                            ? 'Explora la app: compara precios, guarda favoritos y prepara tu lista de compras con datos de ejemplo.'
+                            : 'Tiago Market compara precios cercanos para ayudarte a ahorrar tiempo y dinero.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 17,
@@ -59,24 +62,30 @@ class WelcomePage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 30),
-                      const GoogleSignInButton(
-                        expanded: true,
-                        enabled: authEnabled,
-                      ),
-                      const SizedBox(height: 10),
+                      if (!demo) ...[
+                        const GoogleSignInButton(
+                          expanded: true,
+                          enabled: authEnabled,
+                        ),
+                        const SizedBox(height: 10),
+                      ],
                       OutlinedButton.icon(
                         onPressed: () => _continueAsGuest(context),
                         icon: const Icon(Icons.person_outline_rounded),
-                        label: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 14),
-                          child: Text('Continuar sin cuenta'),
+                        label: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          child: Text(
+                            demo ? 'Explorar demo' : 'Continuar sin cuenta',
+                          ),
                         ),
                       ),
                       const SizedBox(height: 14),
                       Text(
-                        authEnabled
-                            ? 'Con Google guardás tu carrito. Sin cuenta podés comprar, pero tu carrito se pierde al cerrar la app.'
-                            : 'Modo invitado activo. Configura Supabase para habilitar cuentas.',
+                        demo
+                            ? 'Sin registro. Comercios y precios ficticios. Puedes recorrer el envío y pago con un domicilio de ejemplo; no se crean pedidos ni cobros.'
+                            : authEnabled
+                                ? 'Con Google guardás tu carrito. Sin cuenta podés comprar, pero tu carrito se pierde al cerrar la app.'
+                                : 'Modo invitado activo. Configura Supabase para habilitar cuentas.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(fontSize: 12),
                       ),
@@ -86,17 +95,20 @@ class WelcomePage extends StatelessWidget {
                         spacing: 12,
                         children: [
                           TextButton(
-                            onPressed: () => Navigator.of(context).pushNamed(
-                              AppRoutes.legalInfo,
+                            onPressed: () => Navigator.of(
+                              context,
+                            ).pushNamed(AppRoutes.legalInfo),
+                            child: Text(
+                              demo ? 'Acerca de la demo' : 'Aviso legal',
                             ),
-                            child: const Text('Aviso legal'),
                           ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pushNamed(
-                              AppRoutes.legalInfo,
+                          if (!demo)
+                            TextButton(
+                              onPressed: () => Navigator.of(
+                                context,
+                              ).pushNamed(AppRoutes.legalInfo),
+                              child: const Text('Política de privacidad'),
                             ),
-                            child: const Text('Política de privacidad'),
-                          ),
                         ],
                       ),
                     ],
