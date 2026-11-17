@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:tiago_market_app/src/models/models.dart';
-import 'package:tiago_market_app/src/widgets/product_image_fallback.dart';
+import 'package:tiago_market_app/src/widgets/product_thumbnail.dart';
 import 'package:tiago_market_app/src/widgets/store_logo.dart';
 
 class ProductComparisonCard extends StatelessWidget {
@@ -32,14 +32,11 @@ class ProductComparisonCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           child: SizedBox.square(
             dimension: 58,
-            child: best.imageUrl == null
-                ? ProductImageFallback(storeName: best.storeName)
-                : Image.network(
-                    best.imageUrl!,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) =>
-                        ProductImageFallback(storeName: best.storeName),
-                  ),
+            child: ProductThumbnail(
+              imageUrl: best.imageUrl,
+              productName: group.productName,
+              storeName: best.storeName,
+            ),
           ),
         ),
         title: Text(

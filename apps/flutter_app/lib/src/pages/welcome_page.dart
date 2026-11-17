@@ -82,7 +82,7 @@ class WelcomePage extends StatelessWidget {
                       const SizedBox(height: 14),
                       Text(
                         demo
-                            ? 'Sin registro. Comercios y precios ficticios. Puedes recorrer el envío y pago con un domicilio de ejemplo; no se crean pedidos ni cobros.'
+                            ? 'Sin registro. Productos con imágenes y precios ficticios. Puedes recorrer el envío y pago con un domicilio de ejemplo; no se crean pedidos ni cobros.'
                             : authEnabled
                                 ? 'Con Google guardás tu carrito. Sin cuenta podés comprar, pero tu carrito se pierde al cerrar la app.'
                                 : 'Modo invitado activo. Configura Supabase para habilitar cuentas.',

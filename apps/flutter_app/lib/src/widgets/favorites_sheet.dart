@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tiago_market_app/src/models/models.dart';
+import 'package:tiago_market_app/src/widgets/product_thumbnail.dart';
 import 'package:tiago_market_app/src/widgets/store_logo.dart';
 
 class FavoritesSheet extends StatefulWidget {
@@ -55,18 +56,17 @@ class _FavoritesSheetState extends State<FavoritesSheet> {
                 for (final item in _items)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: item.imageUrl == null
-                        ? CircleAvatar(
-                            backgroundColor: const Color(0xFFE1E8E4),
-                            child: const Icon(
-                              Icons.favorite_border,
-                              color: Color(0xFF006C51),
-                            ),
-                          )
-                        : CircleAvatar(
-                            backgroundImage: NetworkImage(item.imageUrl!),
-                            backgroundColor: const Color(0xFFE1E8E4),
-                          ),
+                    leading: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: SizedBox.square(
+                        dimension: 40,
+                        child: ProductThumbnail(
+                          imageUrl: item.imageUrl,
+                          productName: item.productName,
+                          storeName: item.bestStoreName,
+                        ),
+                      ),
+                    ),
                     title: Text(item.productName),
                     subtitle: Row(
                       children: [

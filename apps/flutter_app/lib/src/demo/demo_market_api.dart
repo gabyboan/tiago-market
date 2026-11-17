@@ -1,65 +1,73 @@
 import 'package:tiago_market_app/src/models/models.dart';
 import 'package:tiago_market_app/src/services/market_api.dart';
 
-/// Entirely fictional fixtures. No HTTP, Supabase, credentials or real stores.
+/// Fictional offers with bundled brand imagery. No HTTP or production services.
 class DemoMarketApi extends MarketApi {
   @override
   bool get isDemo => true;
 
   static const _products = [
     (
-      name: 'Leche entera 1 L',
+      name: 'Leche entera Santa Clara 1 L',
       category: 'Lácteos',
       size: '1 l',
+      image: 'milk',
       a: 27.5,
       b: 30.0
     ),
     (
-      name: 'Arroz súper extra 900 g',
+      name: 'Arroz Verde Valle súper extra 900 g',
       category: 'Despensa',
       size: '900 g',
+      image: 'rice',
       a: 32.0,
       b: 29.5
     ),
     (
-      name: 'Huevo blanco 12 piezas',
+      name: 'Huevo San Juan blanco 12 piezas',
       category: 'Huevos',
       size: '12 pza',
+      image: 'eggs',
       a: 45.0,
       b: 49.0
     ),
     (
-      name: 'Pasta de fideo 200 g',
+      name: 'Pasta Barilla fideo N° 0 200 g',
       category: 'Despensa',
       size: '200 g',
+      image: 'pasta',
       a: 12.0,
       b: 10.5
     ),
     (
-      name: 'Café molido 250 g',
+      name: 'Café molido La Tampiqueña 250 g',
       category: 'Despensa',
       size: '250 g',
+      image: 'coffee',
       a: 68.0,
       b: 64.0
     ),
     (
-      name: 'Aceite vegetal 1 L',
+      name: 'Aceite vegetal Ave 850 ml',
       category: 'Despensa',
-      size: '1 l',
+      size: '850 ml',
+      image: 'oil',
       a: 38.0,
       b: 42.5
     ),
     (
-      name: 'Azúcar estándar 1 kg',
+      name: 'Azúcar mascabado Metco 1 kg',
       category: 'Despensa',
       size: '1 kg',
+      image: 'sugar',
       a: 28.0,
       b: 26.0
     ),
     (
-      name: 'Refresco de cola 600 ml',
+      name: 'Refresco Coca-Cola original 600 ml',
       category: 'Bebidas',
       size: '600 ml',
+      image: 'cola',
       a: 17.0,
       b: 19.5
     ),
@@ -68,14 +76,10 @@ class DemoMarketApi extends MarketApi {
   static List<PriceResult> get _rows => [
         for (final product in _products)
           for (final store in [
+            (name: 'Arteli · ejemplo', slug: 'demo-arteli', price: product.a),
             (
-              name: 'Mercado Centro · ejemplo',
-              slug: 'demo-centro',
-              price: product.a
-            ),
-            (
-              name: 'Despensa Norte · ejemplo',
-              slug: 'demo-norte',
+              name: 'Smart & Final · ejemplo',
+              slug: 'demo-smart-final',
               price: product.b
             ),
           ])
@@ -87,6 +91,7 @@ class DemoMarketApi extends MarketApi {
               price: store.price,
               presentation: product.size,
               category: product.category,
+              imageUrl: 'assets/demo_products/${product.image}.jpg',
               source: 'demo',
               capturedAt: '',
             ),

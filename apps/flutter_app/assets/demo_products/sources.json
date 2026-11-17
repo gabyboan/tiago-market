@@ -1,0 +1,42 @@
+{
+  "milk": {
+    "name": "Leche Santa Clara Entera 1L",
+    "url": "https://www.arteli.com.mx/leche-santa-clara-entera-1l-3019421/p",
+    "image": "https://arteli.vteximg.com.br/arquivos/ids/246291/7501295600126_00.jpg?v=638635772898530000"
+  },
+  "rice": {
+    "name": "Arroz Verde Valle Super Extra 900g",
+    "url": "https://www.arteli.com.mx/arroz-verde-valle-super-extra-900g-3008380/p",
+    "image": "https://arteli.vteximg.com.br/arquivos/ids/203620/7501071301698_00.jpg?v=638576446845470000"
+  },
+  "eggs": {
+    "name": "Huevo San Juan Blanco 12 Piezas",
+    "url": "https://www.arteli.com.mx/huevo-san-juan-blanco-12-piezas-3101213/p",
+    "image": "https://arteli.vteximg.com.br/arquivos/ids/256360/7503000555011_00.jpg?v=638635805372130000"
+  },
+  "pasta": {
+    "name": "Pasta Barilla Fideo No. 0 200g.",
+    "url": "https://www.arteli.com.mx/pasta-barilla-fideo-no-0-200g-3083944/p",
+    "image": "https://arteli.vteximg.com.br/arquivos/ids/259250/8076809513029_00.jpg?v=638635814119600000"
+  },
+  "coffee": {
+    "name": "Café Molido La Tampiqueña 250g",
+    "url": "https://www.arteli.com.mx/cafe-molido-la-tampiquena-250g-3019096/p",
+    "image": "https://arteli.vteximg.com.br/arquivos/ids/201157/7501403372501_00.jpg?v=638576436268470000"
+  },
+  "oil": {
+    "name": "Aceite Vegetal Comestible Ave 850ml",
+    "url": "https://www.arteli.com.mx/aceite-vegetal-comestible-ave-850ml-3696190/p",
+    "image": "https://arteli.vteximg.com.br/arquivos/ids/247483/7501039122105_00.jpg?v=638635776566030000"
+  },
+  "sugar": {
+    "name": "Azúcar Mascabado Genuino Metco Bolsa de 1kg",
+    "url": "https://www.arteli.com.mx/azucar-mascabado-genuino-metco-bolsa-de-1kg-3346421/p",
+    "image": "https://arteli.vteximg.com.br/arquivos/ids/210606/7501096200471_00.jpg?v=638576477609300000"
+  },
+  "cola": {
+    "name": "Refresco Coca-Cola Original 600ml",
+    "url": "https://www.arteli.com.mx/refresco-coca-cola-original-600ml-3001968/p",
+    "image": "https://arteli.vteximg.com.br/arquivos/ids/200805/75007614_00.jpg?v=638576434689630000"
+  }
+}

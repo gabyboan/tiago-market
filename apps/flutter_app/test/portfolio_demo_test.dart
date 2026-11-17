@@ -27,7 +27,7 @@ void main() {
               p.storeSlug!.startsWith('demo-') &&
               p.capturedAt.isEmpty &&
               p.storeProductUrl == null &&
-              p.imageUrl == null,
+              p.imageUrl!.startsWith('assets/demo_products/'),
         ),
         isTrue,
       );

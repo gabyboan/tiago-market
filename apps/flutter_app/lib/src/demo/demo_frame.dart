@@ -71,8 +71,9 @@ class DemoInfoPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Todos los comercios, precios y disponibilidades de esta '
-                'demo son ficticios. No corresponden a ofertas reales.',
+                'Los precios y disponibilidades de esta demo son ficticios. '
+                'Las imágenes y los logos identifican productos y comercios; '
+                'no corresponden a ofertas reales ni implican afiliación.',
               ),
               const SizedBox(height: 16),
               const Text(

@@ -24,8 +24,8 @@ que conserva fuente, fecha y evidencia de cada observación.
 Recorré la bienvenida, buscá productos, compará comercios, guardá favoritos y
 armá una lista de compras. Desde la lista podés probar el envío y los métodos
 de pago y revisar un borrador con un domicilio ficticio de solo lectura.
-La demo usa ocho productos y dos comercios ficticios, señalados en
-pantalla; no consulta producción ni realiza compras. La lista se borra al
+La demo usa ocho productos con imágenes y logos de dos comercios, con precios
+ficticios señalados en pantalla; no consulta producción ni realiza compras. La lista se borra al
 recargar y los favoritos se guardan solamente en tu navegador.
 En «Acerca de la demo» podés consultar la versión de la app y la fecha de
 compilación publicada.

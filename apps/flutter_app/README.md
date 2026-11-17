@@ -104,7 +104,8 @@ Ver [arquitectura](../../docs/architecture.md),
 
 [Probar la misma interfaz en el navegador](https://gabyboan.github.io/tiago-market/),
 sin registro ni configuración de servicios. `lib/main_demo.dart` inyecta un
-catálogo ficticio con `DemoMarketApi`; mantiene el aviso de demo en todas las
+catálogo de precios ficticios con `DemoMarketApi`; las fotos de productos y los
+logos de comercios se incluyen en los assets. Mantiene el aviso de demo en todas las
 pantallas y deshabilita login y ubicación. Incluye la bienvenida y el recorrido
 de envío y métodos de pago; el domicilio ficticio es de solo lectura y el
 borrador no envía pedidos ni realiza cobros.
