@@ -31,6 +31,8 @@ class ProductThumbnail extends StatelessWidget {
             )
           : Image.network(
               image,
+              // Retailer CDNs often do not allow CanvasKit cross-origin fetches.
+              webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
               fit: BoxFit.contain,
               semanticLabel: productName,
               errorBuilder: (_, __, ___) => fallback,

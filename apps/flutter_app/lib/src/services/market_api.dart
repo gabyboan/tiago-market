@@ -167,11 +167,15 @@ class MarketApi {
   Future<List<ProductCategory>> categories(
       {double? latitude, double? longitude, double radiusKm = 10}) async {
     if (_hasRpc) {
-      final rows = await _rpcList('catalog_categories_v3', params: {
-        'user_latitude': latitude,
-        'user_longitude': longitude,
-        'radius_km': radiusKm,
-      });
+      final rows = await _rpcList(
+        'catalog_categories_v3',
+        params: {
+          'user_latitude': latitude,
+          'user_longitude': longitude,
+          'radius_km': radiusKm,
+        },
+        timeout: const Duration(seconds: 25),
+      );
       return rows
           .map((row) => ProductCategory.fromJson(row as Map<String, dynamic>))
           .toList();
@@ -235,12 +239,13 @@ class MarketApi {
   Future<List<dynamic>> _rpcList(
     String functionName, {
     required Map<String, dynamic> params,
+    Duration timeout = const Duration(seconds: 10),
   }) async {
     if (_rpcInvoker != null) return _rpcInvoker(functionName, params);
     try {
       final response = await Supabase.instance.client
           .rpc(functionName, params: params)
-          .timeout(const Duration(seconds: 10));
+          .timeout(timeout);
       return response as List<dynamic>? ?? const [];
     } catch (error, stackTrace) {
       debugPrint('$functionName RPC failed: $error');

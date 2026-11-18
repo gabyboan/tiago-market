@@ -100,10 +100,28 @@ Ver [arquitectura](../../docs/architecture.md),
 [ingesta](tools/ingestion/README.md) y
 [contratos de envío y pagos](docs/envio-y-pagos.md).
 
-## Demo de portafolio
+## Publicación web
 
-[Probar la misma interfaz en el navegador](https://gabyboan.github.io/tiago-market/),
-sin registro ni configuración de servicios. `lib/main_demo.dart` inyecta un
+[Abrir la aplicación completa](https://gabyboan.github.io/tiago-market/).
+El workflow `portfolio-demo.yml` compila `lib/main.dart` y publica en GitHub
+Pages desde `main`, con el prefijo `/tiago-market/`. Usa `SUPABASE_URL` y
+`SUPABASE_PUBLISHABLE_KEY` de GitHub Actions para habilitar el catálogo real,
+Google y el carrito por cuenta. El script rechaza claves privilegiadas y
+solamente incorpora esas dos variables públicas al cliente.
+
+```bash
+flutter pub get
+python3 tools/build_pages.py
+```
+
+Supabase Auth debe permitir `https://gabyboan.github.io/tiago-market/` como
+URL de retorno para Google. Las fotos remotas usan imágenes HTML en la web
+para admitir los CDN de comercios; si falta la foto, se muestra el logo del
+comercio. `version.json` registra versión, fecha de compilación y commit.
+
+## Demo local de portafolio
+
+Para recorrer la interfaz sin servicios, `lib/main_demo.dart` inyecta un
 catálogo de precios ficticios con `DemoMarketApi`; las fotos de productos y los
 logos de comercios se incluyen en los assets. Mantiene el aviso de demo en todas las
 pantallas y deshabilita login y ubicación. Incluye la bienvenida y el recorrido
@@ -118,8 +136,6 @@ python3 -m http.server 8080 --directory build/portfolio-demo
 
 El build no usa Dart defines de servicios, no inicializa Supabase, Firebase ni
 Sentry y falla al arrancar si se intenta incluir configuración de servicios.
-El workflow `portfolio-demo.yml` construye y publica en GitHub Pages desde
-`main`, con el prefijo `/tiago-market/`. No requiere secretos de producción.
 La versión de `pubspec.yaml` y la fecha de compilación aparecen en «Acerca de
 la demo». `version.json` identifica también el commit publicado para comprobar
 qué actualización está disponible.

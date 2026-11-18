@@ -51,11 +51,11 @@ class ProductComparisonCard extends StatelessWidget {
             LayoutBuilder(
               builder: (context, constraints) => Row(
                 children: [
-                  if (constraints.maxWidth >= 100) ...[
-                    StoreLogo(
-                        storeName: best.storeName, storeSlug: best.storeSlug),
-                    const SizedBox(width: 6),
-                  ],
+                  StoreLogo(
+                      storeName: best.storeName,
+                      storeSlug: best.storeSlug,
+                      size: 24),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       hasDistanceRecommendation

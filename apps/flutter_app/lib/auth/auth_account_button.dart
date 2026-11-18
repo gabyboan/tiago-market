@@ -31,6 +31,7 @@ class GoogleAuthService {
     if (kIsWeb) {
       final launched = await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.google,
+        redirectTo: Uri.base.replace(query: '', fragment: '').toString(),
       );
       if (!launched) {
         throw AuthException(

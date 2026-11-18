@@ -68,5 +68,37 @@
       256,
       104
     ]
+  },
+  "compro": {
+    "source": "https://www.comprov.com.mx/assets/images/logocompro.png",
+    "website": "https://www.comprov.com.mx/"
+  },
+  "merkabastos": {
+    "source": "https://merkabastos.com/wp-content/uploads/2025/08/cropped-icon-192x192.png",
+    "website": "https://merkabastos.com/"
+  },
+  "garis": {
+    "source": "https://garis.mayoreoenlinea.mx/cdn/shop/files/Logo_Garis.png?v=1658937944&width=256",
+    "website": "https://garis.mayoreoenlinea.mx/"
+  },
+  "mas-bodega": {
+    "source": "https://masbodega.mayoreoenlinea.mx/cdn/shop/files/logo_pequeno.jpg?v=1657818957&width=256",
+    "website": "https://masbodega.mayoreoenlinea.mx/"
+  },
+  "carnemart": {
+    "source": "https://carnemart.com/wp-content/uploads/2025/09/cropped-favicon.png",
+    "website": "https://carnemart.com/"
+  },
+  "gran-bodega": {
+    "source": "https://www.lagranbodega.com.mx/arquivos/logo2header.png?v=637709198529370000",
+    "website": "https://www.lagranbodega.com.mx/"
+  },
+  "scorpion": {
+    "source": "https://www.scorpion.com.mx/pub/media/logo/stores/1/LOGO-SCORPION-2026.png",
+    "website": "https://www.scorpion.com.mx/tienda/"
+  },
+  "justo": {
+    "source": "https://justo.mx/_next/static/media/favicon.568f4d14.ico",
+    "website": "https://justo.mx/"
   }
 }

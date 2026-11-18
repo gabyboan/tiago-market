@@ -63,10 +63,24 @@ begin
       raise exception 'Invalid pagination accepted';
     exception when raise_exception then assert sqlerrm='Invalid pagination'; end;
   end loop;
+  for item in select * from (values
+    (null::double precision,null::double precision,10::double precision),
+    (19.43,-99.13,10), (20,-100,0.1), (100,-99,10),
+    (null,-99,10), (19.43,null,10), (19.43,-99.13,null)
+  ) args(latitude,longitude,radius)
+  loop
+    select coalesce(jsonb_agg(to_jsonb(x) order by x.name),'[]') into previous
+    from public.catalog_categories_v3_baseline(item.latitude,item.longitude,item.radius) x;
+    select coalesce(jsonb_agg(to_jsonb(x) order by x.name),'[]') into optimized
+    from public.catalog_categories_v3(item.latitude,item.longitude,item.radius) x;
+    assert previous=optimized, format('Category counts changed: %s',row_to_json(item));
+  end loop;
+  assert not exists(select 1 from pg_proc p cross join lateral aclexplode(p.proacl) a where p.oid='public.catalog_categories_v3(double precision,double precision,double precision)'::regprocedure and a.grantee=0 and a.privilege_type='EXECUTE'), 'No PUBLIC category execution grant';
   assert not has_table_privilege('anon','public.price_snapshots','select'), 'No anonymous table access';
   assert not has_table_privilege('anon','public.current_catalog_prices','select'), 'Catalog view remains private';
   assert not exists(select 1 from pg_proc p cross join lateral aclexplode(p.proacl) a where p.oid='public.online_prices_v4(text,integer,integer,text,boolean,text)'::regprocedure and a.grantee=0 and a.privilege_type='EXECUTE'), 'No PUBLIC execution grant';
 end $$;
 set local role anon;
 select count(*) as anonymous_catalog_page from public.online_prices_v4('');
+select * from public.catalog_categories_v3();
 reset role;

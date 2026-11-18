@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tiago_market_app/src/widgets/store_logo.dart';
 
 class ProductImageFallback extends StatelessWidget {
   const ProductImageFallback({required this.storeName, super.key});
@@ -7,18 +8,6 @@ class ProductImageFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: const Color(0xFFE2F3EB),
-      child: Center(
-        child: Text(
-          storeName.isEmpty ? '?' : storeName.characters.first.toUpperCase(),
-          style: const TextStyle(
-            color: Color(0xFF006C51),
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
-    );
+    return Center(child: StoreLogo(storeName: storeName, size: 48));
   }
 }

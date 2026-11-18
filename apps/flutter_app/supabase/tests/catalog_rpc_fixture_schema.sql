@@ -16,3 +16,10 @@ create index on public.price_snapshots(store_product_id,captured_at desc);
 create unique index on public.price_snapshots(store_product_id,captured_at) where branch_id is null;
 create table public.product_images(id uuid primary key default gen_random_uuid(), store_product_id uuid, image_url text);
 create index on public.product_images(store_product_id);
+create function public.distance_km(double precision,double precision,double precision,double precision)
+returns double precision language sql immutable strict set search_path = '' as $$
+  select 6371 * 2 * asin(sqrt(
+    power(sin(radians($3-$1)/2),2)
+    + cos(radians($1))*cos(radians($3))*power(sin(radians($4-$2)/2),2)
+  ));
+$$;

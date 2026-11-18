@@ -57,7 +57,12 @@ void main() {
             .widgetList<StoreLogo>(find.byType(StoreLogo))
             .map((logo) => logo.storeName)
             .toList(),
-        ['Chedraui online', 'Chedraui online', 'Merco online']);
+        [
+          'Chedraui online',
+          'Chedraui online',
+          'Chedraui online',
+          'Merco online'
+        ]);
     expect(tester.takeException(), isNull);
   });
 }

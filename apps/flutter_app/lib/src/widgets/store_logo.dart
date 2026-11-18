@@ -18,6 +18,9 @@ class StoreLogo extends StatelessWidget {
         .toLowerCase()
         .replaceAll('é', 'e')
         .replaceAll('á', 'a')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ü', 'u')
         .replaceAll(RegExp(r'[^a-z0-9]'), '');
 
     String? match(String value) {
@@ -34,6 +37,14 @@ class StoreLogo extends StatelessWidget {
         'bodegaaurrera': 'bodega-aurrera',
         'lacomer': 'la-comer',
         'citymarket': 'city-market',
+        'compro': 'compro',
+        'merkabastos': 'merkabastos',
+        'garis': 'garis',
+        'masbodega': 'mas-bodega',
+        'carnemart': 'carnemart',
+        'granbodega': 'gran-bodega',
+        'justo': 'justo',
+        'scorpion': 'scorpion',
       }.entries) {
         if (name == entry.key || name.startsWith(entry.key)) {
           return 'assets/store_logos/${entry.value}.png';

@@ -17,18 +17,19 @@ productos, comparar opciones y organizar una lista de compras. El proyecto
 combina una aplicación Flutter, una web de consulta y un pipeline de ingesta
 que conserva fuente, fecha y evidencia de cada observación.
 
-## Probar la demo
+## Probar la aplicación
 
-**[Abrir Tiago Market en el navegador](https://gabyboan.github.io/tiago-market/)** · Sin registro
+**[Abrir Tiago Market en el navegador](https://gabyboan.github.io/tiago-market/)** · Google o acceso invitado
 
-Recorré la bienvenida, buscá productos, compará comercios, guardá favoritos y
-armá una lista de compras. Desde la lista podés probar el envío y los métodos
-de pago y revisar un borrador con un domicilio ficticio de solo lectura.
-La demo usa ocho productos con imágenes y logos de dos comercios, con precios
-ficticios señalados en pantalla; no consulta producción ni realiza compras. La lista se borra al
-recargar y los favoritos se guardan solamente en tu navegador.
-En «Acerca de la demo» podés consultar la versión de la app y la fecha de
-compilación publicada.
+La web publica la aplicación Flutter completa que usa Android: búsqueda y
+comparación con el catálogo real de Supabase, fotos de productos, logos de
+comercios, favoritos, carrito e inicio de sesión con Google. Las consultas
+leen los precios vigentes que renuevan los jobs de ingesta.
+
+El carrito se sincroniza por cuenta al iniciar sesión; como invitado dura
+la sesión actual. Los favoritos se guardan en el navegador. El recorrido
+de envío y pago prepara un borrador; no envía pedidos ni realiza cobros.
+El archivo público `version.json` identifica la versión y el commit publicado.
 
 ## La app en Android
 
