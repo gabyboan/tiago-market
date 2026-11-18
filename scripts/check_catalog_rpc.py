@@ -18,7 +18,8 @@ def main():
         baseline.replace('online_prices_v4', 'online_prices_v4_baseline'),
         (root / 'migrations/20261022161501_optimize_online_catalog_lookup.sql').read_text(),
         categories.replace('catalog_categories_v3', 'catalog_categories_v3_baseline'),
-        (root / 'migrations/20261118222500_optimize_online_categories.sql').read_text(),
+        (root / 'migrations/20261118222229_optimize_online_categories.sql').read_text(),
+        (root / 'migrations/20261118221919_bound_public_catalog_timeouts.sql').read_text(),
         (root / 'tests/catalog_rpc_equivalence.sql').read_text(),
         'rollback;',
     ])
