@@ -52,6 +52,7 @@ void main() {
         .first;
     await tester.scrollUntilVisible(find.text('Product 0000'), 200,
         scrollable: scrollable);
+    final firstProductOffset = controller.scrollController.offset;
     expect(find.byType(ProductComparisonCard), findsWidgets);
     await tester.tap(find.text('Product 0000'));
     await tester.pumpAndSettle();
@@ -62,7 +63,7 @@ void main() {
     expect(find.byType(ProductComparisonCard).evaluate().length, lessThan(12));
     expect(find.text('Product 0000'), findsNothing);
 
-    controller.scrollController.jumpTo(0);
+    controller.scrollController.jumpTo(firstProductOffset);
     await tester.pumpAndSettle();
     expect(find.byType(PriceCard), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
