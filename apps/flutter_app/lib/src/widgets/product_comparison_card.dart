@@ -25,86 +25,91 @@ class ProductComparisonCard extends StatelessWidget {
     final best = group.best;
     final hasDistanceRecommendation =
         recommendationMode == 'distance' && best.distanceKm != null;
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: ExpansionTile(
-        key: PageStorageKey(group.comparisonKey),
-        // A height animation relayouts the catalog and repositions its HTML
-        // product photos on every frame. Show the details in one layout instead.
-        expansionAnimationStyle: AnimationStyle.noAnimation,
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: SizedBox.square(
-            dimension: 58,
-            child: ProductThumbnail(
-              imageUrl: best.imageUrl,
-              productName: group.productName,
-              storeName: best.storeName,
-            ),
-          ),
-        ),
-        title: Text(
-          group.productName,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            LayoutBuilder(
-              builder: (context, constraints) => Row(
-                children: [
-                  StoreLogo(
-                      storeName: best.storeName,
-                      storeSlug: best.storeSlug,
-                      size: 24),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      hasDistanceRecommendation
-                          ? 'Más cerca en ${best.storeName}'
-                          : 'Mejor precio en ${best.storeName}',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ],
+    return Theme(
+      // Repainting a ripple across an expanded card is costly with web photos.
+      // The instant expansion and button state changes provide tap feedback.
+      data: Theme.of(context).copyWith(splashFactory: NoSplash.splashFactory),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: ExpansionTile(
+          key: PageStorageKey(group.comparisonKey),
+          // A height animation relayouts the catalog and repositions its HTML
+          // product photos on every frame. Show the details in one layout instead.
+          expansionAnimationStyle: AnimationStyle.noAnimation,
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox.square(
+              dimension: 58,
+              child: ProductThumbnail(
+                imageUrl: best.imageUrl,
+                productName: group.productName,
+                storeName: best.storeName,
               ),
             ),
-            Text(
-              '${best.presentation ?? "Presentación por verificar"} - ${group.prices.length} ${group.prices.length == 1 ? "precio" : "precios"}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-        trailing: _BestPriceActions(
-          price: best.price,
-          onAdd: onAdd,
-          favorite: favorite,
-          onToggleFavorite: onToggleFavorite,
-        ),
-        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(group.productName,
-                  style: const TextStyle(fontWeight: FontWeight.w800)),
-            ),
           ),
-          for (var index = 0; index < group.prices.length; index++) ...[
-            PriceCard(
-              result: group.prices[index],
-              recommended: index == 0,
-              recommendationMode: recommendationMode,
+          title: Text(
+            group.productName,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              LayoutBuilder(
+                builder: (context, constraints) => Row(
+                  children: [
+                    StoreLogo(
+                        storeName: best.storeName,
+                        storeSlug: best.storeSlug,
+                        size: 24),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        hasDistanceRecommendation
+                            ? 'Más cerca en ${best.storeName}'
+                            : 'Mejor precio en ${best.storeName}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '${best.presentation ?? "Presentación por verificar"} - ${group.prices.length} ${group.prices.length == 1 ? "precio" : "precios"}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+          trailing: _BestPriceActions(
+            price: best.price,
+            onAdd: onAdd,
+            favorite: favorite,
+            onToggleFavorite: onToggleFavorite,
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(group.productName,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+              ),
             ),
-            if (index < group.prices.length - 1) const SizedBox(height: 8),
+            for (var index = 0; index < group.prices.length; index++) ...[
+              PriceCard(
+                result: group.prices[index],
+                recommended: index == 0,
+                recommendationMode: recommendationMode,
+              ),
+              if (index < group.prices.length - 1) const SizedBox(height: 8),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
