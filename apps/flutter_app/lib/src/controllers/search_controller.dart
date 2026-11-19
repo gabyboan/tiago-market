@@ -42,7 +42,18 @@ class SearchController extends ChangeNotifier with WidgetsBindingObserver {
   final TextEditingController queryController = TextEditingController();
   final ScrollController scrollController = ScrollController();
 
-  List<PriceResult> results = [];
+  List<PriceResult> _results = const [];
+  List<PriceResult> get results => _results;
+  set results(List<PriceResult> value) {
+    _results = List.unmodifiable(value);
+    _filteredResults = null;
+    _groupedResults = null;
+  }
+
+  List<PriceResult>? _filteredResults;
+  bool? _filteredFreshOnly;
+  List<ProductComparisonGroup>? _groupedResults;
+  String? _groupedSortMode;
   bool loading = false;
   bool loadingMore = false;
   bool get usingDemo => _api.isDemo;
@@ -94,15 +105,26 @@ class SearchController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   List<PriceResult> get filteredResults {
-    return results.where((result) {
-      return !freshOnly || result.freshness == 'fresh';
-    }).toList();
+    if (_filteredResults == null || _filteredFreshOnly != freshOnly) {
+      _filteredResults = freshOnly
+          ? List.unmodifiable(
+              results.where((result) => result.freshness == 'fresh'))
+          : results;
+      _filteredFreshOnly = freshOnly;
+      _groupedResults = null;
+    }
+    return _filteredResults!;
   }
 
-  List<ProductComparisonGroup> get groupedResults => groupPriceResults(
-        filteredResults,
-        sortMode: sortMode,
-      );
+  List<ProductComparisonGroup> get groupedResults {
+    final filtered = filteredResults;
+    if (_groupedResults == null || _groupedSortMode != sortMode) {
+      _groupedResults =
+          List.unmodifiable(groupPriceResults(filtered, sortMode: sortMode));
+      _groupedSortMode = sortMode;
+    }
+    return _groupedResults!;
+  }
 
   void _attachScrollListener() {
     scrollController.addListener(() {
@@ -297,7 +319,7 @@ class SearchController extends ChangeNotifier with WidgetsBindingObserver {
       };
       this.results = unique.values.toList();
       page = nextPage;
-      hasMore = results.length == 100;
+      hasMore = results.length == MarketApi.pageSize;
       usingCache = _api.usedCache;
     } catch (exception) {
       if (_disposed || requestId != _requestId) return;

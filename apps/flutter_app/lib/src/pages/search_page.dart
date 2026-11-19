@@ -111,53 +111,67 @@ class SearchPageBody extends StatelessWidget {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 720),
-            child: ListView(
+            child: CustomScrollView(
               controller: controller.scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
-              children: [
-                _SearchHero(demo: controller.usingDemo),
-                const SizedBox(height: 24),
-                _SearchInputRow(
-                  controller: controller,
-                  onShowFilters: () => _showFilters(context),
-                ),
-                const SizedBox(height: 14),
-                _QuickSearchChips(
-                  loading: controller.loading,
-                  onSelected: (query) =>
-                      controller.submitSearch(quickQuery: query),
-                ),
-                const SizedBox(height: 16),
-                _CategoryChips(
-                  categories: controller.categories,
-                  selectedCategory: controller.selectedCategory,
-                  onSelected: controller.setCategory,
-                ),
-                if (controller.searchHistory.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  _SearchHistorySection(controller: controller),
-                ],
-                if (controller.favorites.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  _FavoritesSection(controller: controller),
-                ],
-                const SizedBox(height: 14),
-                _LocationControls(controller: controller),
-                if (controller.hasLocation) ...[
-                  const SizedBox(height: 8),
-                  _LocationHint(controller: controller),
-                ],
-                const SizedBox(height: 22),
-                _NoticeSection(controller: controller),
-                if (!hasEmptyError) ...[
-                  const SizedBox(height: 22),
-                  _ResultsHeader(
-                    groupsCount: groups.length,
-                    pricesCount: filteredResults.length,
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _SearchHero(demo: controller.usingDemo),
+                        const SizedBox(height: 24),
+                        _SearchInputRow(
+                          controller: controller,
+                          onShowFilters: () => _showFilters(context),
+                        ),
+                        const SizedBox(height: 14),
+                        _QuickSearchChips(
+                          loading: controller.loading,
+                          onSelected: (query) =>
+                              controller.submitSearch(quickQuery: query),
+                        ),
+                        const SizedBox(height: 16),
+                        _CategoryChips(
+                          categories: controller.categories,
+                          selectedCategory: controller.selectedCategory,
+                          onSelected: controller.setCategory,
+                        ),
+                        if (controller.searchHistory.isNotEmpty) ...[
+                          const SizedBox(height: 14),
+                          _SearchHistorySection(controller: controller),
+                        ],
+                        if (controller.favorites.isNotEmpty) ...[
+                          const SizedBox(height: 14),
+                          _FavoritesSection(controller: controller),
+                        ],
+                        const SizedBox(height: 14),
+                        _LocationControls(controller: controller),
+                        if (controller.hasLocation) ...[
+                          const SizedBox(height: 8),
+                          _LocationHint(controller: controller),
+                        ],
+                        const SizedBox(height: 22),
+                        _NoticeSection(controller: controller),
+                        if (!hasEmptyError) ...[
+                          const SizedBox(height: 22),
+                          _ResultsHeader(
+                            groupsCount: groups.length,
+                            pricesCount: filteredResults.length,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  _SearchResults(controller: controller, groups: groups),
-                ],
+                ),
+                if (!hasEmptyError)
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+                    sliver:
+                        _SearchResults(controller: controller, groups: groups),
+                  ),
               ],
             ),
           ),

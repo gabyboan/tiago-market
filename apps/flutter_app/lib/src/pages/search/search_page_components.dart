@@ -189,27 +189,20 @@ class _CategoryChips extends StatelessWidget {
 
     return SizedBox(
       height: 28 + MediaQuery.textScalerOf(context).scale(14),
-      child: ListView(
+      child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        children: [
-          Padding(
+        itemCount: categories.length + 1,
+        itemBuilder: (context, index) {
+          final category = index == 0 ? null : categories[index - 1].name;
+          return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ChoiceChip(
-              label: const Text('Todo'),
-              selected: selectedCategory == null,
-              onSelected: (_) => onSelected(null),
+              label: Text(category ?? 'Todo'),
+              selected: selectedCategory == category,
+              onSelected: (_) => onSelected(category),
             ),
-          ),
-          for (final category in categories)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                label: Text(category.name),
-                selected: selectedCategory == category.name,
-                onSelected: (_) => onSelected(category.name),
-              ),
-            ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -489,44 +482,59 @@ class _SearchResults extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (controller.loading) {
-      return const Padding(
-        padding: EdgeInsets.all(32),
-        child: Center(child: CircularProgressIndicator()),
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Center(child: CircularProgressIndicator()),
+        ),
       );
     }
 
     if (controller.results.isEmpty) {
-      return Center(
-        child: Text(controller.emptyMessage),
+      return SliverToBoxAdapter(
+        child: Center(child: Text(controller.emptyMessage)),
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final group in groups) ...[
-          ProductComparisonCard(
-            group: group,
-            onAdd: () => controller.addToShoppingList(group),
-            favorite: controller.isFavorite(group),
-            onToggleFavorite: () => controller.toggleFavorite(group),
-            recommendationMode: controller.sortMode,
-          ),
-          const SizedBox(height: 12),
-        ],
-        if (controller.loadingMore)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 18),
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else if (!controller.loading &&
-            controller.hasMore &&
-            !controller.usingDemo)
-          Center(
-              child: TextButton(
-            onPressed: () => controller.search(append: true),
-            child: const Text('Cargar más productos'),
-          )),
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverList.builder(
+          itemCount: groups.length,
+          itemBuilder: (context, index) {
+            final group = groups[index];
+            return Padding(
+              key: ValueKey(group.comparisonKey),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: ProductComparisonCard(
+                group: group,
+                onAdd: () => controller.addToShoppingList(group),
+                favorite: controller.isFavorite(group),
+                onToggleFavorite: () => controller.toggleFavorite(group),
+                recommendationMode: controller.sortMode,
+              ),
+            );
+          },
+          findChildIndexCallback: (key) {
+            final index = groups
+                .indexWhere((group) => ValueKey(group.comparisonKey) == key);
+            return index < 0 ? null : index;
+          },
+        ),
+        SliverToBoxAdapter(
+          child: controller.loadingMore
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 18),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              : controller.hasMore && !controller.usingDemo
+                  ? Center(
+                      child: TextButton(
+                        onPressed: () => controller.search(append: true),
+                        child: const Text('Cargar más productos'),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+        ),
       ],
     );
   }

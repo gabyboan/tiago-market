@@ -12,6 +12,7 @@ typedef RpcInvoker = Future<List<dynamic>> Function(
 
 class MarketApi {
   MarketApi({RpcInvoker? rpcInvoker}) : _rpcInvoker = rpcInvoker;
+  static const pageSize = 20;
   final RpcInvoker? _rpcInvoker;
   bool get _hasRpc => authEnabled || _rpcInvoker != null;
 
@@ -61,7 +62,7 @@ class MarketApi {
 
     final uri = _apiUri('online-prices').replace(
       queryParameters: {
-        'limit': '100',
+        'limit': pageSize.toString(),
         'page': page.toString(),
         if (query.trim().isNotEmpty) 'query': query,
         if (category != null) 'category': category,
@@ -122,7 +123,7 @@ class MarketApi {
         'user_latitude': latitude,
         'user_longitude': longitude,
         'radius_km': radiusKm,
-        'limit_count': 100,
+        'limit_count': pageSize,
         'page_number': page,
         'category_filter': category,
         'sort_order': orderBy,
@@ -148,7 +149,7 @@ class MarketApi {
       'online_prices_v4',
       params: {
         'search_query': query.trim(),
-        'limit_count': 100,
+        'limit_count': pageSize,
         'page_number': page,
         'category_filter': category,
         'sort_order': orderBy,

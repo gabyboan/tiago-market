@@ -28,6 +28,7 @@ class ProductComparisonCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
+        key: PageStorageKey(group.comparisonKey),
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: SizedBox.square(

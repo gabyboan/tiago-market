@@ -34,16 +34,17 @@ void main() {
     final api = MarketApi(rpcInvoker: (name, params) async {
       calls.add((name, params));
       if (name == 'catalog_categories_v3') return [];
-      if (params['page_number'] == 1) return List.generate(100, row);
-      return [row(100)];
+      expect(params['limit_count'], 20);
+      if (params['page_number'] == 1) return List.generate(20, row);
+      return [row(20)];
     });
     final controller = SearchController(api: api, loadOnStart: true);
     await Future<void>.delayed(Duration.zero);
     expect(controller.hasLocation, isFalse);
     expect(calls.where((c) => c.$1 == 'nearby_prices_v4'), isEmpty);
-    expect(controller.results.length, 100);
+    expect(controller.results.length, 20);
     await controller.search(append: true);
-    expect(controller.results.length, 101);
+    expect(controller.results.length, 21);
     expect(controller.hasMore, isFalse);
     expect(calls.last.$2['page_number'], 2);
     controller.setCategory('Food');
@@ -63,6 +64,7 @@ void main() {
     final rows = await api.compare('',
         latitude: 19.43, longitude: -99.13, page: 2, category: 'Food');
     expect(parameters['page_number'], 2);
+    expect(parameters['limit_count'], 20);
     expect(parameters['category_filter'], 'Food');
     expect(rows.single.branchId, 'branch');
   });
