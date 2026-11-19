@@ -42,7 +42,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(ProductComparisonCard), findsWidgets);
     expect(find.byType(ProductComparisonCard).evaluate().length, lessThan(12));
     expect(find.text('Product 0999'), findsNothing);
     final scrollable = find
@@ -53,6 +52,7 @@ void main() {
         .first;
     await tester.scrollUntilVisible(find.text('Product 0000'), 200,
         scrollable: scrollable);
+    expect(find.byType(ProductComparisonCard), findsWidgets);
     await tester.tap(find.text('Product 0000'));
     await tester.pumpAndSettle();
     expect(find.byType(PriceCard), findsOneWidget);
