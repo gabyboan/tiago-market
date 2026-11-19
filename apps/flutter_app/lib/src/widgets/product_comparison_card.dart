@@ -29,6 +29,9 @@ class ProductComparisonCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
         key: PageStorageKey(group.comparisonKey),
+        // A height animation relayouts the catalog and repositions its HTML
+        // product photos on every frame. Show the details in one layout instead.
+        expansionAnimationStyle: AnimationStyle.noAnimation,
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: SizedBox.square(

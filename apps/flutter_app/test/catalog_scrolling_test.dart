@@ -54,7 +54,15 @@ void main() {
         scrollable: scrollable);
     final firstProductOffset = controller.scrollController.offset;
     expect(find.byType(ProductComparisonCard), findsWidgets);
+    final firstCard = find.byType(ProductComparisonCard).first;
+    final collapsedHeight = tester.getSize(firstCard).height;
     await tester.tap(find.text('Product 0000'));
+    await tester.pump();
+    final expandedHeight = tester.getSize(firstCard).height;
+    expect(expandedHeight, greaterThan(collapsedHeight + 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.getSize(firstCard).height, expandedHeight,
+        reason: 'Opening details must not animate the height of the catalog');
     await tester.pumpAndSettle();
     expect(find.byType(PriceCard), findsOneWidget);
 
@@ -66,6 +74,11 @@ void main() {
     controller.scrollController.jumpTo(firstProductOffset);
     await tester.pumpAndSettle();
     expect(find.byType(PriceCard), findsOneWidget);
+    await tester.tap(find.text('Product 0000').first);
+    await tester.pump();
+    expect(tester.getSize(firstCard).height, collapsedHeight);
+    await tester.pumpAndSettle();
+    expect(find.byType(PriceCard), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
